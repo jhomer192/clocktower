@@ -40,10 +40,34 @@ function saveState(state: GameState) {
 
 export function useGameStore() {
   const [state, setState] = useState<GameState>(loadState);
+  const [stateHistory, setStateHistory] = useState<GameState[]>([]);
 
   useEffect(() => {
     saveState(state);
   }, [state]);
+
+  // Save a snapshot before major actions (phase changes, executions, kills)
+  const saveSnapshot = useCallback((label?: string) => {
+    setState(prev => {
+      setStateHistory(h => [...h.slice(-20), prev]); // keep last 20 snapshots
+      return prev;
+    });
+    if (label) {
+      // just for debugging
+    }
+  }, []);
+
+  // Undo to last snapshot
+  const undoLastAction = useCallback(() => {
+    setStateHistory(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      setState(last);
+      return prev.slice(0, -1);
+    });
+  }, []);
+
+  const canUndo = stateHistory.length > 0;
 
   const update = useCallback((partial: Partial<GameState> | ((prev: GameState) => Partial<GameState>)) => {
     setState(prev => {
@@ -132,6 +156,7 @@ export function useGameStore() {
   }, []);
 
   const startNight = useCallback(() => {
+    saveSnapshot('startNight');
     setState(prev => {
       const newDayNumber = prev.phase === 'day' ? prev.dayNumber : prev.dayNumber;
       return {
@@ -148,6 +173,7 @@ export function useGameStore() {
   }, []);
 
   const startDay = useCallback(() => {
+    saveSnapshot('startDay');
     setState(prev => ({
       ...prev,
       phase: 'day',
@@ -157,6 +183,7 @@ export function useGameStore() {
   }, []);
 
   const advanceToNextNight = useCallback(() => {
+    saveSnapshot('advanceToNextNight');
     setState(prev => ({
       ...prev,
       phase: 'night',
@@ -234,5 +261,8 @@ export function useGameStore() {
     addCustomRole,
     removeCustomRole,
     resetGame,
+    saveSnapshot,
+    undoLastAction,
+    canUndo,
   };
 }

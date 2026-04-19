@@ -25,6 +25,14 @@ function App() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {state.setupComplete && store.canUndo && (
+            <button
+              onClick={store.undoLastAction}
+              className="text-xs px-2 py-1.5 rounded bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors font-medium"
+            >
+              Undo
+            </button>
+          )}
           {state.setupComplete && (
             <button
               onClick={() => {
@@ -92,6 +100,7 @@ function App() {
             onAddLogEntry={store.addLogEntry}
             onAdvanceToNextNight={store.advanceToNextNight}
             onUpdate={store.update}
+            onSaveSnapshot={store.saveSnapshot}
           />
         )}
 

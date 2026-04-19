@@ -14,6 +14,7 @@ interface DayPanelProps {
   onAddLogEntry: (phase: string, text: string) => void;
   onAdvanceToNextNight: () => void;
   onUpdate: (changes: { timerDuration: number }) => void;
+  onSaveSnapshot: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -34,6 +35,7 @@ export function DayPanel({
   onAddLogEntry,
   onAdvanceToNextNight,
   onUpdate,
+  onSaveSnapshot,
 }: DayPanelProps) {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(timerDuration);
@@ -118,6 +120,9 @@ export function DayPanel({
     const nom = nominations[nomIdx];
     const player = players.find(p => p.id === nom.nomineeId);
     if (!player) return;
+
+    // Save snapshot before execution (for undo)
+    onSaveSnapshot();
 
     // Check for Saint
     const role = getRoleById(player.role || '', customRoles);
