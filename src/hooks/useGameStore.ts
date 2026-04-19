@@ -101,6 +101,15 @@ export function useGameStore() {
     setState(prev => ({ ...prev, currentTab: tab }));
   }, []);
 
+  const setScript = useCallback((scriptId: string) => {
+    setState(prev => ({
+      ...prev,
+      scriptId,
+      // Clear role assignments when switching scripts
+      players: prev.players.map(p => ({ ...p, role: undefined, coverRole: undefined })),
+    }));
+  }, []);
+
   // Player management
   const addPlayer = useCallback((name: string) => {
     setState(prev => ({
@@ -241,9 +250,34 @@ export function useGameStore() {
     }));
   }, []);
 
-  // Reset
+  const setCustomRoles = useCallback((roles: Role[]) => {
+    setState(prev => ({ ...prev, customRoles: roles }));
+  }, []);
+
+  // End game: keep player names, clear everything else so a new game can start
+  const endGame = useCallback(() => {
+    setState(prev => ({
+      ...defaultState(),
+      players: prev.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        alive: true,
+        ghostVoteUsed: false,
+        poisoned: false,
+        protected: false,
+        drunkPoisoned: false,
+        effects: [],
+      })),
+      customRoles: prev.customRoles,
+      log: prev.log, // keep the log history across games
+    }));
+    setStateHistory([]);
+  }, []);
+
+  // Reset: full wipe including players
   const resetGame = useCallback(() => {
     setState(defaultState());
+    setStateHistory([]);
   }, []);
 
   return {
@@ -252,6 +286,7 @@ export function useGameStore() {
     addLogEntry,
     removeLastLog,
     setTab,
+    setScript,
     addPlayer,
     removePlayer,
     reorderPlayers,
@@ -267,6 +302,8 @@ export function useGameStore() {
     updateNomination,
     addCustomRole,
     removeCustomRole,
+    setCustomRoles,
+    endGame,
     resetGame,
     saveSnapshot,
     undoLastAction,
