@@ -129,9 +129,10 @@ export function DayPanel({
     // Check for Saint
     const role = getRoleById(player.role || '', customRoles);
 
-    onUpdatePlayer(player.id, { alive: false });
+    // Mark as pending execution - they stay alive for voting today, die at night
+    onUpdatePlayer(player.id, { pendingExecution: true });
     onUpdateNomination(nomIdx, { executed: true });
-    onAddLogEntry(dayLabel, `${player.name} was executed (${nom.votes.length} votes)`);
+    onAddLogEntry(dayLabel, `${player.name} was executed (${nom.votes.length} votes) -- dies at dusk`);
 
     if (role?.id === 'saint') {
       onAddLogEntry(dayLabel, `${player.name} was the Saint! Good team loses!`);
@@ -327,26 +328,38 @@ export function DayPanel({
         {/* New nomination */}
         {nominating ? (
           <div className="border-t border-border pt-3 space-y-2">
-            <select
-              value={nominator}
-              onChange={e => setNominator(e.target.value)}
-              className="w-full bg-bg border border-border rounded-lg px-3 py-3 text-fg-bright focus:border-accent focus:outline-none"
-            >
-              <option value="">Who is nominating?</option>
-              {alivePlayers.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            <select
-              value={nominee}
-              onChange={e => setNominee(e.target.value)}
-              className="w-full bg-bg border border-border rounded-lg px-3 py-3 text-fg-bright focus:border-accent focus:outline-none"
-            >
-              <option value="">Who is being nominated?</option>
-              {alivePlayers.filter(p => p.id !== nominator).map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
+            {(() => {
+              // Players who have already nominated today can't nominate again
+              const alreadyNominated = new Set(nominations.map(n => n.nominatorId));
+              // Players who have already been nominated today can't be nominated again
+              const alreadyNominee = new Set(nominations.map(n => n.nomineeId));
+              const canNominate = alivePlayers.filter(p => !alreadyNominated.has(p.id));
+              const canBeNominated = alivePlayers.filter(p => !alreadyNominee.has(p.id) && p.id !== nominator);
+              return (
+                <>
+                  <select
+                    value={nominator}
+                    onChange={e => setNominator(e.target.value)}
+                    className="w-full bg-bg border border-border rounded-lg px-3 py-3 text-fg-bright focus:border-accent focus:outline-none"
+                  >
+                    <option value="">Who is nominating?</option>
+                    {canNominate.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={nominee}
+                    onChange={e => setNominee(e.target.value)}
+                    className="w-full bg-bg border border-border rounded-lg px-3 py-3 text-fg-bright focus:border-accent focus:outline-none"
+                  >
+                    <option value="">Who is being nominated?</option>
+                    {canBeNominated.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </>
+              );
+            })()}
             <div className="flex gap-2">
               <button
                 onClick={handleNominate}
