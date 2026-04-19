@@ -172,6 +172,7 @@ function App() {
                 players={state.players}
                 isFirstNight={state.isFirstNight}
                 dayNumber={state.dayNumber}
+                scriptId={state.scriptId}
                 customRoles={state.customRoles}
                 onUpdatePlayer={store.updatePlayer}
                 onAddLogEntry={store.addLogEntry}

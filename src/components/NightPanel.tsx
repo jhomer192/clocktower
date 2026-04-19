@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import type { Player, Role } from '../types/game';
-import { getRoleById } from '../data/roles';
+import { getRoleById, getRolesForScript } from '../data/roles';
 
 interface NightPanelProps {
   players: Player[];
   isFirstNight: boolean;
   dayNumber: number;
+  scriptId: string;
   customRoles: Role[];
   onUpdatePlayer: (id: string, changes: Partial<Player>) => void;
   onAddLogEntry: (phase: string, text: string) => void;
@@ -22,6 +23,7 @@ export function NightPanel({
   players,
   isFirstNight,
   dayNumber,
+  scriptId,
   customRoles,
   onUpdatePlayer,
   onAddLogEntry,
@@ -1037,6 +1039,212 @@ export function NightPanel({
               })}
             </div>
             {actionNotes[key] && <div className="text-xs text-fg-dim">{actionNotes[key]}</div>}
+          </div>
+        );
+
+      // === SPY (TB): sees the Grimoire ===
+      case 'spy':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">The Spy sees the Grimoire (all roles). Show them the Players tab.</div>
+            <div className="bg-surface2 rounded-lg p-3 space-y-1">
+              {players.map(p => {
+                const r = getRoleById(p.role || '', customRoles);
+                return (
+                  <div key={p.id} className="flex items-center justify-between text-sm">
+                    <span className={`${p.alive ? 'text-fg-bright' : 'text-fg-dim line-through'}`}>{p.name}</span>
+                    <span className={r?.team === 'evil' ? 'text-red' : 'text-accent'}>{r?.name || '?'}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-xs text-fg-dim italic">The Spy may register as good/Townsfolk/Outsider to other abilities.</div>
+          </div>
+        );
+
+      // === MATHEMATICIAN (S&V): how many abilities malfunctioned ===
+      case 'mathematician': {
+        // Count poisoned/drunk players who used abilities today
+        const malfunctions = players.filter(p => p.alive && (p.poisoned || p.drunkPoisoned) && p.role).length;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
+              Tell them: {poisoned ? Math.max(0, malfunctions - 1) : malfunctions} ability/abilities malfunctioned
+              {poisoned ? ' (poisoned -- give false info)' : ''}
+            </div>
+            <div className="text-xs text-fg-dim">This counts players whose abilities gave wrong results due to poison/drunk.</div>
+          </div>
+        );
+      }
+
+      // === FLOWERGIRL (S&V): auto-computed in storyteller notes, but show here too ===
+      case 'flowergirl': {
+        const demonPlayer = players.find(p => {
+          const r = getRoleById(p.role || '', customRoles);
+          return r?.type === 'demon' && p.alive;
+        });
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
+              {demonPlayer ? `The Demon is ${demonPlayer.name}. Check if they voted today.` : 'No demon found.'}
+              {poisoned ? ' (poisoned -- give opposite answer)' : ''}
+            </div>
+            <div className="text-xs text-fg-dim">This is also auto-computed in Storyteller Notes during the day.</div>
+          </div>
+        );
+      }
+
+      // === TOWN CRIER (S&V): auto-computed ===
+      case 'town_crier': {
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
+              Check if any Minion nominated today.
+              {poisoned ? ' (poisoned -- give opposite answer)' : ''}
+            </div>
+            <div className="text-xs text-fg-dim">This is also auto-computed in Storyteller Notes during the day.</div>
+          </div>
+        );
+      }
+
+      // === ORACLE (S&V): count dead evil ===
+      case 'oracle': {
+        const deadEvil = players.filter(p => !p.alive && getRoleById(p.role || '', customRoles)?.team === 'evil').length;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
+              Tell them: {poisoned ? Math.max(0, deadEvil + 1) : deadEvil} dead player{deadEvil !== 1 ? 's are' : ' is'} evil
+              {poisoned ? ' (poisoned -- give false info)' : ''}
+            </div>
+          </div>
+        );
+      }
+
+      // === JUGGLER (S&V): how many correct guesses ===
+      case 'juggler': {
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className="text-xs text-fg-dim">Count how many of their public Day 1 guesses were correct, then tell them the number.</div>
+            <textarea
+              value={actionNotes[key] || ''}
+              onChange={e => setActionNotes(prev => ({ ...prev, [key]: e.target.value }))}
+              placeholder="e.g., Guessed 3, got 2 correct. Tell them: 2"
+              className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg-bright focus:border-accent focus:outline-none resize-none"
+              rows={2}
+            />
+            {poisoned && <div className="text-xs text-orange">Poisoned -- give wrong number</div>}
+          </div>
+        );
+      }
+
+      // === EVIL TWIN (S&V): first night reveal ===
+      case 'evil_twin': {
+        const twinId = step.player.coverRole;
+        const twin = twinId ? players.find(p => p.id === twinId) : null;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            {twin ? (
+              <div className="text-sm text-red font-semibold">
+                Wake {step.player.name} and {twin.name}. Point to each other. They know one is evil and one is good.
+              </div>
+            ) : (
+              <div className="text-sm text-fg-dim">No good twin assigned. Set this in Setup.</div>
+            )}
+          </div>
+        );
+      }
+
+      // === GODFATHER (BMR): learn outsiders, kill if outsider died ===
+      case 'godfather': {
+        const outsidersInPlay = players.filter(p => getRoleById(p.role || '', customRoles)?.type === 'outsider');
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className="text-sm text-accent font-semibold">
+              Outsiders in play: {outsidersInPlay.length > 0 ? outsidersInPlay.map(p => `${p.name} (${getRoleById(p.role || '', customRoles)?.name})`).join(', ') : 'None'}
+            </div>
+            <div className="text-xs text-fg-dim mt-1">If an Outsider died today, choose a player to kill:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive && p.id !== step.player.id).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    handleKill(p.id);
+                    setActionNotes(prev => ({ ...prev, [key]: `Godfather killed ${p.name}` }));
+                  }}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    pendingKills.has(p.id) ? 'bg-red text-bg' : 'bg-surface2 text-fg hover:bg-red-dim'
+                  }`}
+                >{p.name}{playerBadges(p)}</button>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      // === CERENOVUS (S&V): make someone mad ===
+      case 'cerenovus': {
+        const goodRoles = getRolesForScript(scriptId, customRoles).filter(r => r.team === 'good');
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose a player and a good character. They must be "mad" they are that character tomorrow or be executed.</div>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {players.filter(p => p.alive && p.id !== step.player.id).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setActionNotes(prev => ({ ...prev, [key]: `${p.name} must be mad they are [pick role]` }))}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    (actionNotes[key] || '').includes(p.name) ? 'bg-purple-600 text-white' : 'bg-surface2 text-fg hover:bg-purple-600/20'
+                  }`}
+                >{p.name}</button>
+              ))}
+            </div>
+            <textarea
+              value={actionNotes[key] || ''}
+              onChange={e => setActionNotes(prev => ({ ...prev, [key]: e.target.value }))}
+              placeholder="e.g., Alice must be mad they are the Clockmaker"
+              className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg-bright focus:border-accent focus:outline-none resize-none"
+              rows={1}
+            />
+          </div>
+        );
+      }
+
+      // === PIT-HAG (S&V): change someone's role ===
+      case 'pit_hag':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose a player and a not-in-play character. They become that character.</div>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {players.filter(p => p.alive).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Changed ${p.name} to [pick role]` }))}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    (actionNotes[key] || '').includes(p.name) ? 'bg-red text-bg' : 'bg-surface2 text-fg hover:bg-red-dim'
+                  }`}
+                >{p.name}{playerBadges(p)}</button>
+              ))}
+            </div>
+            <textarea
+              value={actionNotes[key] || ''}
+              onChange={e => setActionNotes(prev => ({ ...prev, [key]: e.target.value }))}
+              placeholder="e.g., Changed Alice to the Sage. CAUTION: If new Demon created, deaths are arbitrary!"
+              className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg-bright focus:border-accent focus:outline-none resize-none"
+              rows={1}
+            />
+            <div className="text-xs text-red italic">If you create a new Demon, deaths tonight are arbitrary!</div>
           </div>
         );
 

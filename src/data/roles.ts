@@ -386,8 +386,8 @@ export const SECTS_AND_VIOLETS_ROLES: Role[] = [
     type: 'minion',
     team: 'evil',
     ability: 'Each night, choose a player & a good character: they are \'mad\' they are this character tomorrow, or might be executed.',
-    firstNight: 0,
-    otherNights: 0,
+    firstNight: 5,
+    otherNights: 5,
   },
   {
     id: 'pit_hag',
@@ -396,7 +396,7 @@ export const SECTS_AND_VIOLETS_ROLES: Role[] = [
     team: 'evil',
     ability: 'Each night*, choose a player & a character they become (if not-in-play). If a Demon is created, deaths tonight are arbitrary.',
     firstNight: 0,
-    otherNights: 0,
+    otherNights: 4,
   },
   // Demons (4)
   {
@@ -491,7 +491,7 @@ export const BAD_MOON_RISING_ROLES: Role[] = [
     team: 'good',
     ability: 'Each night*, choose a player & guess their character: if you guess wrong, you die.',
     firstNight: 0,
-    otherNights: 0,
+    otherNights: 3,
   },
   {
     id: 'gossip',
@@ -508,8 +508,8 @@ export const BAD_MOON_RISING_ROLES: Role[] = [
     type: 'townsfolk',
     team: 'good',
     ability: 'Once per game, at night, choose a character: they are drunk for 3 nights & 3 days.',
-    firstNight: 0,
-    otherNights: 0,
+    firstNight: 5,
+    otherNights: 4,
   },
   {
     id: 'professor',
@@ -518,7 +518,7 @@ export const BAD_MOON_RISING_ROLES: Role[] = [
     team: 'good',
     ability: 'Once per game, at night*, choose a dead player: if they are a Townsfolk, they are resurrected.',
     firstNight: 0,
-    otherNights: 0,
+    otherNights: 6,
   },
   {
     id: 'minstrel',
