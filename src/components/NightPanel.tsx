@@ -42,6 +42,25 @@ export function NightPanel({
     const result: NightStep[] = [];
     for (const player of players) {
       if (!player.role || !player.alive) continue;
+
+      // If player is the Drunk, use their cover role for night order
+      // but mark them so the Storyteller knows to give false info
+      if (player.role === 'drunk' && player.coverRole) {
+        const coverRole = getRoleById(player.coverRole, customRoles);
+        if (coverRole) {
+          const order = isFirstNight ? (coverRole.firstNight || 0) : (coverRole.otherNights || 0);
+          if (order > 0) {
+            // Create a modified role entry that shows the cover role name but flags as Drunk
+            const drunkRole: Role = {
+              ...coverRole,
+              name: `${coverRole.name} (DRUNK - give false info)`,
+            };
+            result.push({ order, role: drunkRole, player });
+          }
+        }
+        continue;
+      }
+
       const role = getRoleById(player.role, customRoles);
       if (!role) continue;
 
