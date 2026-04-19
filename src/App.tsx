@@ -77,16 +77,51 @@ function App() {
 
         {state.currentTab === 'game' && state.setupComplete && (
           <div>
-            {/* Phase indicator */}
-            <div className={`flex items-center gap-2 px-4 py-3 border-b border-border ${
+            {/* Phase indicator -- sticky so you always know where you are */}
+            <div className={`sticky top-[52px] z-10 px-4 py-2.5 border-b border-border ${
               state.phase === 'night'
-                ? 'bg-indigo-950/40 text-indigo-200'
-                : 'bg-amber-950/30 text-amber-200'
+                ? 'bg-indigo-950/90 backdrop-blur text-indigo-200'
+                : 'bg-amber-950/80 backdrop-blur text-amber-200'
             }`}>
-              <span className="text-xl">{state.phase === 'night' ? '🌙' : '☀️'}</span>
-              <span className="text-base font-semibold">
-                {state.phase === 'night' ? `Night ${state.dayNumber}` : `Day ${state.dayNumber}`}
-              </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{state.phase === 'night' ? '🌙' : '☀️'}</span>
+                  <span className="text-sm font-bold">
+                    {state.phase === 'night' ? `Night ${state.dayNumber}` : `Day ${state.dayNumber}`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {/* Timeline dots showing game progression */}
+                  {Array.from({ length: state.dayNumber }, (_, i) => {
+                    const dayNum = i + 1;
+                    const isCurrentNight = state.phase === 'night' && dayNum === state.dayNumber;
+                    const isCurrentDay = state.phase === 'day' && dayNum === state.dayNumber;
+                    const isPast = dayNum < state.dayNumber;
+                    return (
+                      <div key={dayNum} className="flex items-center gap-0.5">
+                        {/* Night dot */}
+                        <div className={`w-2 h-2 rounded-full ${
+                          isCurrentNight ? 'bg-indigo-400 ring-2 ring-indigo-400/30' :
+                          isPast || isCurrentDay ? 'bg-indigo-400/50' : 'bg-indigo-900'
+                        }`} title={`Night ${dayNum}`} />
+                        {/* Day dot (only if we've reached this day) */}
+                        {(isPast || isCurrentDay) && (
+                          <div className={`w-2 h-2 rounded-full ${
+                            isCurrentDay ? 'bg-amber-400 ring-2 ring-amber-400/30' :
+                            isPast ? 'bg-amber-400/50' : 'bg-amber-900'
+                          }`} title={`Day ${dayNum}`} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="text-[10px] mt-1 opacity-60">
+                {state.phase === 'night'
+                  ? (state.isFirstNight ? 'First night -- wake roles in order below' : 'Wake roles in order, record actions')
+                  : `${state.players.filter(p => p.alive).length} alive -- discuss and nominate`
+                }
+              </div>
             </div>
 
             {state.phase === 'night' ? (
