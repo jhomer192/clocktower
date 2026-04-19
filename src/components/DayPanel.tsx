@@ -15,6 +15,7 @@ interface DayPanelProps {
   onAdvanceToNextNight: () => void;
   onUpdate: (changes: { timerDuration: number }) => void;
   onSaveSnapshot: () => void;
+  onEndGame: () => void;
 }
 
 function formatTime(seconds: number): string {
@@ -36,6 +37,7 @@ export function DayPanel({
   onAdvanceToNextNight,
   onUpdate,
   onSaveSnapshot,
+  onEndGame,
 }: DayPanelProps) {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(timerDuration);
@@ -391,6 +393,7 @@ export function DayPanel({
       <div className="mt-4 pt-4 border-t border-border">
         <button
           onClick={() => {
+            if (!confirm('End this game? Players will keep their names but roles and statuses will be cleared.')) return;
             const alive = players.filter(p => p.alive);
             const dead = players.filter(p => !p.alive);
             const ghostVotesUsed = dead.filter(p => p.ghostVoteUsed).length;
@@ -401,7 +404,7 @@ export function DayPanel({
               `Ghost votes used: ${ghostVotesUsed}/${dead.length}`,
             ].join('\n');
             onAddLogEntry('END', summary);
-            alert(`Game Over!\n\n${summary}`);
+            onEndGame();
           }}
           className="w-full py-3 bg-red/20 text-red font-semibold rounded-xl hover:bg-red/30 active:scale-[0.98] transition"
         >

@@ -153,6 +153,7 @@ function App() {
                 onAdvanceToNextNight={store.advanceToNextNight}
                 onUpdate={store.update}
                 onSaveSnapshot={store.saveSnapshot}
+                onEndGame={store.endGame}
               />
             )}
           </div>

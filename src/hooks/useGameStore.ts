@@ -241,9 +241,30 @@ export function useGameStore() {
     }));
   }, []);
 
-  // Reset
+  // End game: keep player names, clear everything else so a new game can start
+  const endGame = useCallback(() => {
+    setState(prev => ({
+      ...defaultState(),
+      players: prev.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        alive: true,
+        ghostVoteUsed: false,
+        poisoned: false,
+        protected: false,
+        drunkPoisoned: false,
+        effects: [],
+      })),
+      customRoles: prev.customRoles,
+      log: prev.log, // keep the log history across games
+    }));
+    setStateHistory([]);
+  }, []);
+
+  // Reset: full wipe including players
   const resetGame = useCallback(() => {
     setState(defaultState());
+    setStateHistory([]);
   }, []);
 
   return {
@@ -267,6 +288,7 @@ export function useGameStore() {
     updateNomination,
     addCustomRole,
     removeCustomRole,
+    endGame,
     resetGame,
     saveSnapshot,
     undoLastAction,
