@@ -80,12 +80,30 @@ export function DayPanel({
     const ePlayer = players.find(p => p.id === nominee);
     const nPlayer = players.find(p => p.id === nominator);
 
+    // Virgin check: first time nominated, if nominator is Townsfolk, nominator is executed
+    if (ePlayer?.role === 'virgin' && !ePlayer.usedAbility) {
+      const nominatorRole = getRoleById(nPlayer?.role || '', customRoles);
+      onUpdatePlayer(ePlayer.id, { usedAbility: true }); // Virgin ability spent
+      if (nominatorRole?.type === 'townsfolk' && !ePlayer.poisoned && !ePlayer.drunkPoisoned) {
+        onSaveSnapshot();
+        onUpdatePlayer(nPlayer!.id, { pendingExecution: true });
+        onAddLogEntry(dayLabel, `${nPlayer?.name} nominated the Virgin (${ePlayer?.name}) -- ${nPlayer?.name} is executed immediately!`);
+        const nom: Nomination = { nominatorId: nominator, nomineeId: nominee, votes: [], executed: false };
+        onAddNomination(nom);
+        setNominator('');
+        setNominee('');
+        setNominating(false);
+        return;
+      } else {
+        onAddLogEntry(dayLabel, `${nPlayer?.name} nominated the Virgin (${ePlayer?.name}) -- nominator is not Townsfolk (or Virgin is poisoned), nothing happens`);
+      }
+    }
+
     // Witch curse check: nominated player dies immediately
     if (ePlayer?.cursed) {
       onSaveSnapshot();
       onUpdatePlayer(ePlayer.id, { alive: false, cursed: false });
       onAddLogEntry(dayLabel, `${nPlayer?.name} nominated ${ePlayer?.name} -- WITCH CURSE: ${ePlayer.name} dies immediately!`);
-      // Still record the nomination
       const nom: Nomination = { nominatorId: nominator, nomineeId: nominee, votes: [], executed: false };
       onAddNomination(nom);
       setNominator('');
@@ -427,7 +445,7 @@ export function DayPanel({
                   >
                     <option value="">Who is being nominated?</option>
                     {canBeNominated.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
+                      <option key={p.id} value={p.id}>{p.name}{p.role === 'virgin' && !p.usedAbility ? ' (VIRGIN!)' : ''}{p.cursed ? ' (CURSED!)' : ''}</option>
                     ))}
                   </select>
                 </>
