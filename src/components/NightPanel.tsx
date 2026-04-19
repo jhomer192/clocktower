@@ -262,7 +262,9 @@ export function NightPanel({
                   onClick={() => {
                     setActionNotes(prev => ({ ...prev, [key]: `Master: ${p.name}` }));
                   }}
-                  className="px-3 py-2 rounded-lg text-sm font-medium bg-surface2 text-fg hover:bg-accent-dim transition-colors"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    actionNotes[key] === `Master: ${p.name}` ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                  }`}
                 >
                   {p.name}
                 </button>
@@ -271,8 +273,305 @@ export function NightPanel({
           </div>
         );
 
+      // === ALL DEMONS: kill picker ===
+      case 'fang_gu':
+      case 'no_dashii':
+      case 'vigormortis':
+      case 'vortox':
+      case 'zombuul':
+      case 'pukka':
+      case 'shabaloth':
+      case 'po':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose a player to kill:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    handleKill(p.id);
+                    setActionNotes(prev => ({ ...prev, [key]: `Killed ${p.name}` }));
+                  }}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    pendingKills.has(p.id) ? 'bg-red text-bg' : 'bg-surface2 text-fg hover:bg-red-dim'
+                  }`}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+            {step.role.id === 'po' && (
+              <div className="text-xs text-fg-dim mt-1 italic">Po: if you chose no-one last night, choose up to 3 tonight</div>
+            )}
+            {step.role.id === 'fang_gu' && (
+              <div className="text-xs text-fg-dim mt-1 italic">Fang Gu: if first Outsider killed, they become Fang Gu and you die</div>
+            )}
+          </div>
+        );
+
+      // === WITCH (S&V): curse a player ===
+      case 'witch':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose a player to curse (if nominated tomorrow, they die):</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Cursed ${p.name}` }))}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    actionNotes[key] === `Cursed ${p.name}` ? 'bg-purple-600 text-white' : 'bg-surface2 text-fg hover:bg-purple-600/20'
+                  }`}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      // === INFO ROLES: pick players + show what to tell them ===
+      case 'washerwoman': {
+        // Show 2 players, one is a particular Townsfolk
+        const townsfolk = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'townsfolk');
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a Townsfolk):</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => {
+                const selected = (actionNotes[key] || '').includes(p.name);
+                return (
+                  <button key={p.id} onClick={() => {
+                    const current = actionNotes[key] || '';
+                    const names = current.split(', ').filter(Boolean);
+                    if (selected) {
+                      setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
+                    } else if (names.length < 2) {
+                      setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
+                    }
+                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selected ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                  }`}>{p.name}{townsfolk.some(t => t.id === p.id) ? ' (TF)' : ''}</button>
+                );
+              })}
+            </div>
+            {actionNotes[key] && <div className="text-xs text-accent">Tell them: one of [{actionNotes[key]}] is the [Townsfolk role]</div>}
+          </div>
+        );
+      }
+
+      case 'librarian': {
+        const outsiders = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'outsider');
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be an Outsider, or say zero):</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => {
+                const selected = (actionNotes[key] || '').includes(p.name);
+                return (
+                  <button key={p.id} onClick={() => {
+                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
+                    else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
+                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selected ? 'bg-cyan-600 text-bg' : 'bg-surface2 text-fg hover:bg-cyan-600/20'
+                  }`}>{p.name}{outsiders.some(t => t.id === p.id) ? ' (OS)' : ''}</button>
+                );
+              })}
+            </div>
+            {outsiders.length === 0 && <div className="text-xs text-cyan-400">No Outsiders in play -- tell them zero</div>}
+            {actionNotes[key] && <div className="text-xs text-cyan-400">Tell them: one of [{actionNotes[key]}] is the [Outsider role]</div>}
+          </div>
+        );
+      }
+
+      case 'investigator': {
+        const minions = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'minion');
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a Minion):</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => {
+                const selected = (actionNotes[key] || '').includes(p.name);
+                return (
+                  <button key={p.id} onClick={() => {
+                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
+                    else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
+                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selected ? 'bg-orange text-bg' : 'bg-surface2 text-fg hover:bg-orange-dim'
+                  }`}>{p.name}{minions.some(t => t.id === p.id) ? ' (MN)' : ''}</button>
+                );
+              })}
+            </div>
+            {actionNotes[key] && <div className="text-xs text-orange">Tell them: one of [{actionNotes[key]}] is the [Minion role]</div>}
+          </div>
+        );
+      }
+
+      case 'fortune_teller':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">They pick 2 players. Is one the Demon?</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.map(p => {
+                const selected = (actionNotes[key] || '').includes(p.name);
+                const isDemon = getRoleById(p.role || '', customRoles)?.type === 'demon';
+                return (
+                  <button key={p.id} onClick={() => {
+                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
+                    else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
+                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selected ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                  }`}>{p.name}</button>
+                );
+              })}
+            </div>
+            {(() => {
+              const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+              if (names.length === 2) {
+                const hasDemon = names.some(n => {
+                  const p = players.find(pl => pl.name === n);
+                  return p && getRoleById(p.role || '', customRoles)?.type === 'demon';
+                });
+                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                return (
+                  <div className={`text-xs ${poisoned ? 'text-orange' : 'text-accent'}`}>
+                    Tell them: {poisoned ? (hasDemon ? 'No' : 'Yes') : (hasDemon ? 'Yes' : 'No')}
+                    {poisoned ? ' (poisoned -- give false info)' : ''}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        );
+
+      case 'empath': {
+        const empIdx = players.findIndex(p => p.id === step.player.id);
+        const alive = players.filter(p => p.alive);
+        const empAlive = alive.findIndex(p => p.id === step.player.id);
+        let evilCount = 0;
+        if (empAlive >= 0 && alive.length > 1) {
+          const left = alive[(empAlive - 1 + alive.length) % alive.length];
+          const right = alive[(empAlive + 1) % alive.length];
+          for (const n of [left, right]) {
+            if (n && n.id !== step.player.id && getRoleById(n.role || '', customRoles)?.team === 'evil') evilCount++;
+          }
+        }
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
+              Tell them: {poisoned ? (evilCount === 0 ? '1' : '0') : evilCount}
+              {poisoned ? ' (poisoned -- give false info)' : ''}
+            </div>
+          </div>
+        );
+      }
+
+      // === INNKEEPER (BMR): protect 2 players, 1 is drunk ===
+      case 'innkeeper':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose 2 players to protect (1 will be drunk until dusk):</div>
+            <div className="flex flex-wrap gap-1.5">
+              {alivePlayers.map(p => {
+                const selected = (actionNotes[key] || '').includes(p.name);
+                return (
+                  <button key={p.id} onClick={() => {
+                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
+                    else if (names.length < 2) {
+                      setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
+                      handleProtectToggle(p.id);
+                    }
+                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selected ? 'bg-green text-bg' : 'bg-surface2 text-fg hover:bg-green-dim'
+                  }`}>{p.name}</button>
+                );
+              })}
+            </div>
+          </div>
+        );
+
+      // === SAILOR (BMR): choose player, one of you is drunk ===
+      case 'sailor':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose a player. Either you or they are drunk until dusk:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => (
+                <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name}` }))}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    actionNotes[key] === `Chose ${p.name}` ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                  }`}>{p.name}</button>
+              ))}
+            </div>
+          </div>
+        );
+
+      // === EXORCIST (BMR): choose player (demon doesn't wake if chosen) ===
+      case 'exorcist':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose a player (different from last night). If Demon, they learn who you are and don't wake:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => (
+                <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name}` }))}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    actionNotes[key] === `Chose ${p.name}` ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                  }`}>{p.name}</button>
+              ))}
+            </div>
+          </div>
+        );
+
+      // === DREAMER (S&V): choose player, learn 1 good + 1 evil character ===
+      case 'dreamer':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">They choose a player. Show them 1 good and 1 evil character (1 is correct):</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive && p.id !== step.player.id).map(p => {
+                const role = getRoleById(p.role || '', customRoles);
+                return (
+                  <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name} (${role?.name || '?'})` }))}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      (actionNotes[key] || '').includes(p.name) ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                    }`}>{p.name}</button>
+                );
+              })}
+            </div>
+            {actionNotes[key] && <div className="text-xs text-accent">Their actual role is noted. Show 1 good + 1 evil character.</div>}
+          </div>
+        );
+
+      // === SNAKE CHARMER (S&V): choose player ===
+      case 'snake_charmer':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose a player. If Demon, you swap characters. Otherwise you are poisoned:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => {
+                const isDemon = getRoleById(p.role || '', customRoles)?.type === 'demon';
+                return (
+                  <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name}${isDemon ? ' -- SWAP! They become Snake Charmer (poisoned), you become Demon' : ' -- poisoned'}` }))}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      (actionNotes[key] || '').includes(p.name) ? (isDemon ? 'bg-red text-bg' : 'bg-orange text-bg') : 'bg-surface2 text-fg hover:bg-accent-dim'
+                    }`}>{p.name}</button>
+                );
+              })}
+            </div>
+            {actionNotes[key] && <div className="text-xs text-fg-dim">{actionNotes[key]}</div>}
+          </div>
+        );
+
       default:
-        // Generic: info roles, Fortune Teller, etc.
+        // Generic: roles without special UI
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
