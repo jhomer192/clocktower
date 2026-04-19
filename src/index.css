@@ -47,3 +47,8 @@ body {
 input, select, textarea, button {
   font-family: inherit;
 }
+
+/* Safe area for iOS notch / home indicator */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
