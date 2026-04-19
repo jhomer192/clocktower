@@ -261,6 +261,12 @@ export function DayPanel({
                     <span className={`text-sm font-bold ${passed ? 'text-yellow' : 'text-fg-dim'}`}>
                       {nom.votes.length}/{executionThreshold}
                     </span>
+                    {nom.votes.length > 0 && (() => {
+                      const deadVotes = nom.votes.filter(vid => !players.find(p => p.id === vid)?.alive).length;
+                      return deadVotes > 0 ? (
+                        <span className="text-[10px] text-fg-dim">({deadVotes} 👻)</span>
+                      ) : null;
+                    })()}
                     {!nom.executed && (
                       <button
                         onClick={() => setVotingIndex(isVoting ? null : idx)}
@@ -292,7 +298,7 @@ export function DayPanel({
                                 : 'bg-surface2 text-fg hover:bg-accent-dim'
                             } ${!p.alive ? 'italic' : ''}`}
                           >
-                            {p.name}{!p.alive ? ' 👻' : ''}{voted ? ' ✓' : ''}
+                            {p.name}{!p.alive ? ' 👻' : ''}{voted ? ' ✓' : ''}{voted && !p.alive ? ' (dead)' : ''}
                           </button>
                         );
                       })}
@@ -378,6 +384,28 @@ export function DayPanel({
           className="flex-1 py-4 bg-accent text-bg font-bold rounded-xl active:scale-[0.98] transition-transform"
         >
           → Night {dayNumber + 1}
+        </button>
+      </div>
+
+      {/* End Game */}
+      <div className="mt-4 pt-4 border-t border-border">
+        <button
+          onClick={() => {
+            const alive = players.filter(p => p.alive);
+            const dead = players.filter(p => !p.alive);
+            const ghostVotesUsed = dead.filter(p => p.ghostVoteUsed).length;
+            const summary = [
+              `Game ended on Day ${dayNumber}`,
+              `Alive: ${alive.map(p => p.name).join(', ') || 'none'}`,
+              `Dead: ${dead.map(p => p.name).join(', ') || 'none'}`,
+              `Ghost votes used: ${ghostVotesUsed}/${dead.length}`,
+            ].join('\n');
+            onAddLogEntry('END', summary);
+            alert(`Game Over!\n\n${summary}`);
+          }}
+          className="w-full py-3 bg-red/20 text-red font-semibold rounded-xl hover:bg-red/30 active:scale-[0.98] transition"
+        >
+          End Game
         </button>
       </div>
     </div>
