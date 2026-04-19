@@ -49,8 +49,15 @@ export function SetupPanel({
   const roles = getRolesForScript(scriptId, customRoles);
 
   // Check if Baron is in play for composition adjustment
-  const hasBaronInPlay = players.some(p => p.role === 'baron');
-  const composition = getComposition(players.length, hasBaronInPlay);
+  const rolesInPlay = new Set(players.map(p => p.role).filter(Boolean) as string[]);
+  const composition = getComposition(players.length, rolesInPlay);
+
+  // Describe composition modifiers
+  const modifiers: string[] = [];
+  if (rolesInPlay.has('baron')) modifiers.push('Baron (+2 Outsiders)');
+  if (rolesInPlay.has('fang_gu')) modifiers.push('Fang Gu (+1 Outsider)');
+  if (rolesInPlay.has('vigormortis')) modifiers.push('Vigormortis (-1 Outsider)');
+  if (rolesInPlay.has('godfather')) modifiers.push('Godfather (+1 Outsider)');
 
   // Count assigned roles by type
   const assigned = useMemo(() => {
@@ -290,7 +297,7 @@ export function SetupPanel({
       {/* Composition tracker */}
       {composition && players.length >= 5 && (
         <div className="bg-surface rounded-xl p-4">
-          <div className="text-sm text-fg-dim mb-3">Role Composition ({players.length} players){hasBaronInPlay ? ' — Baron in play (+2 Outsiders)' : ''}</div>
+          <div className="text-sm text-fg-dim mb-3">Role Composition ({players.length} players){modifiers.length > 0 ? ` — ${modifiers.join(', ')}` : ''}</div>
           <div className="grid grid-cols-2 gap-2">
             {([
               ['townsfolk', composition.townsfolk, assigned.townsfolk] as const,

@@ -689,15 +689,26 @@ export const ROLE_COMPOSITIONS: Record<number, RoleComposition> = {
   15: { townsfolk: 9, outsiders: 2, minions: 3, demons: 1 },
 };
 
-export function getComposition(playerCount: number, hasBaronInPlay: boolean): RoleComposition | null {
+export function getComposition(playerCount: number, rolesInPlay: Set<string>): RoleComposition | null {
   const base = ROLE_COMPOSITIONS[playerCount];
   if (!base) return null;
-  if (!hasBaronInPlay) return base;
-  // Baron adds 2 outsiders, removes 2 townsfolk
+
+  let outsiderDelta = 0;
+  // Baron (TB): +2 Outsiders
+  if (rolesInPlay.has('baron')) outsiderDelta += 2;
+  // Fang Gu (S&V): +1 Outsider
+  if (rolesInPlay.has('fang_gu')) outsiderDelta += 1;
+  // Vigormortis (S&V): -1 Outsider
+  if (rolesInPlay.has('vigormortis')) outsiderDelta -= 1;
+  // Godfather (BMR): +1 Outsider (default; storyteller adjusts)
+  if (rolesInPlay.has('godfather')) outsiderDelta += 1;
+
+  if (outsiderDelta === 0) return base;
+
   return {
     ...base,
-    townsfolk: base.townsfolk - 2,
-    outsiders: base.outsiders + 2,
+    townsfolk: Math.max(0, base.townsfolk - outsiderDelta),
+    outsiders: Math.max(0, base.outsiders + outsiderDelta),
   };
 }
 
