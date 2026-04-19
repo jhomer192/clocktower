@@ -75,33 +75,47 @@ function App() {
           </div>
         )}
 
-        {state.currentTab === 'night' && state.setupComplete && (
-          <NightPanel
-            players={state.players}
-            isFirstNight={state.isFirstNight}
-            dayNumber={state.dayNumber}
-            customRoles={state.customRoles}
-            onUpdatePlayer={store.updatePlayer}
-            onAddLogEntry={store.addLogEntry}
-            onStartDay={store.startDay}
-          />
-        )}
+        {state.currentTab === 'game' && state.setupComplete && (
+          <div>
+            {/* Phase indicator */}
+            <div className={`flex items-center gap-2 px-4 py-3 border-b border-border ${
+              state.phase === 'night'
+                ? 'bg-indigo-950/40 text-indigo-200'
+                : 'bg-amber-950/30 text-amber-200'
+            }`}>
+              <span className="text-xl">{state.phase === 'night' ? '🌙' : '☀️'}</span>
+              <span className="text-base font-semibold">
+                {state.phase === 'night' ? `Night ${state.dayNumber}` : `Day ${state.dayNumber}`}
+              </span>
+            </div>
 
-        {state.currentTab === 'day' && state.setupComplete && (
-          <DayPanel
-            players={state.players}
-            dayNumber={state.dayNumber}
-            nominations={state.nominations}
-            timerDuration={state.timerDuration}
-            customRoles={state.customRoles}
-            onUpdatePlayer={store.updatePlayer}
-            onAddNomination={store.addNomination}
-            onUpdateNomination={store.updateNomination}
-            onAddLogEntry={store.addLogEntry}
-            onAdvanceToNextNight={store.advanceToNextNight}
-            onUpdate={store.update}
-            onSaveSnapshot={store.saveSnapshot}
-          />
+            {state.phase === 'night' ? (
+              <NightPanel
+                players={state.players}
+                isFirstNight={state.isFirstNight}
+                dayNumber={state.dayNumber}
+                customRoles={state.customRoles}
+                onUpdatePlayer={store.updatePlayer}
+                onAddLogEntry={store.addLogEntry}
+                onStartDay={store.startDay}
+              />
+            ) : (
+              <DayPanel
+                players={state.players}
+                dayNumber={state.dayNumber}
+                nominations={state.nominations}
+                timerDuration={state.timerDuration}
+                customRoles={state.customRoles}
+                onUpdatePlayer={store.updatePlayer}
+                onAddNomination={store.addNomination}
+                onUpdateNomination={store.updateNomination}
+                onAddLogEntry={store.addLogEntry}
+                onAdvanceToNextNight={store.advanceToNextNight}
+                onUpdate={store.update}
+                onSaveSnapshot={store.saveSnapshot}
+              />
+            )}
+          </div>
         )}
 
         {state.currentTab === 'players' && state.setupComplete && (

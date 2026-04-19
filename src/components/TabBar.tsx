@@ -8,8 +8,7 @@ interface TabBarProps {
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'setup', label: 'Setup', icon: '⚙' },
-  { id: 'night', label: 'Night', icon: '🌙' },
-  { id: 'day', label: 'Day', icon: '☀' },
+  { id: 'game', label: 'Game', icon: '▶' },
   { id: 'players', label: 'Players', icon: '👥' },
   { id: 'log', label: 'Log', icon: '📜' },
 ];

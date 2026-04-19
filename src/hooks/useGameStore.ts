@@ -27,7 +27,14 @@ function defaultState(): GameState {
 function loadState(): GameState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return { ...defaultState(), ...JSON.parse(saved) };
+    if (saved) {
+      const parsed = { ...defaultState(), ...JSON.parse(saved) };
+      // Migrate legacy 'night'/'day' tabs to unified 'game' tab
+      if (parsed.currentTab === 'night' || parsed.currentTab === 'day') {
+        parsed.currentTab = 'game';
+      }
+      return parsed;
+    }
   } catch { /* ignore */ }
   return defaultState();
 }
@@ -151,7 +158,7 @@ export function useGameStore() {
       phase: 'night',
       dayNumber: 1,
       isFirstNight: true,
-      currentTab: 'night',
+      currentTab: 'game',
     }));
   }, []);
 
@@ -164,7 +171,7 @@ export function useGameStore() {
         phase: 'night',
         isFirstNight: false,
         nightActions: [],
-        currentTab: 'night',
+        currentTab: 'game',
         dayNumber: newDayNumber,
         // Clear nightly statuses
         players: prev.players.map(p => ({ ...p, protected: false })),
@@ -178,7 +185,7 @@ export function useGameStore() {
       ...prev,
       phase: 'day',
       nominations: [],
-      currentTab: 'day',
+      currentTab: 'game',
     }));
   }, []);
 
@@ -191,7 +198,7 @@ export function useGameStore() {
       isFirstNight: false,
       nightActions: [],
       nominations: [],
-      currentTab: 'night',
+      currentTab: 'game',
       players: prev.players.map(p => ({ ...p, protected: false, poisoned: p.drunkPoisoned ? true : false })),
     }));
   }, []);

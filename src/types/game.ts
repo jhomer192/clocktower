@@ -1,7 +1,7 @@
 export type RoleType = 'townsfolk' | 'outsider' | 'minion' | 'demon';
 export type Team = 'good' | 'evil';
 export type Phase = 'setup' | 'night' | 'day';
-export type Tab = 'setup' | 'night' | 'day' | 'players' | 'log';
+export type Tab = 'setup' | 'game' | 'players' | 'log';
 
 export interface Role {
   id: string;
