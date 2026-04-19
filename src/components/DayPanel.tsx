@@ -386,6 +386,138 @@ export function DayPanel({
         )}
       </div>
 
+      {/* Storyteller Notes - auto-computed info for night */}
+      {(() => {
+        const notes: { role: string; icon: string; text: string; color: string }[] = [];
+
+        // Get all role IDs in play
+        const rolesInPlay = new Map<string, Player>();
+        for (const p of players) {
+          if (p.role && p.alive) rolesInPlay.set(p.role, p);
+        }
+
+        // All voters across all nominations today
+        const allVoters = new Set<string>();
+        for (const nom of nominations) {
+          for (const vid of nom.votes) allVoters.add(vid);
+        }
+
+        // All nominators today
+        const allNominators = new Set(nominations.map(n => n.nominatorId));
+
+        // Find the demon
+        const demonPlayer = players.find(p => {
+          if (!p.role || !p.alive) return false;
+          const r = getRoleById(p.role, customRoles);
+          return r?.type === 'demon';
+        });
+
+        // Flowergirl (S&V) - did the Demon vote today?
+        if (rolesInPlay.has('flowergirl') && demonPlayer) {
+          const demonVoted = allVoters.has(demonPlayer.id);
+          const fg = rolesInPlay.get('flowergirl')!;
+          const poisoned = fg.poisoned || fg.drunkPoisoned;
+          notes.push({
+            role: 'Flowergirl',
+            icon: '\uD83C\uDF38',
+            text: poisoned
+              ? `Tell ${fg.name}: ${demonVoted ? 'No' : 'Yes'} (give false info -- poisoned)`
+              : `Tell ${fg.name}: the Demon ${demonVoted ? 'did' : 'did not'} vote today`,
+            color: poisoned ? 'text-orange' : 'text-accent',
+          });
+        }
+
+        // Town Crier (S&V) - did a Minion nominate today?
+        if (rolesInPlay.has('town_crier')) {
+          const minionNominated = players.some(p => {
+            if (!p.role) return false;
+            const r = getRoleById(p.role, customRoles);
+            return r?.type === 'minion' && allNominators.has(p.id);
+          });
+          const tc = rolesInPlay.get('town_crier')!;
+          const poisoned = tc.poisoned || tc.drunkPoisoned;
+          notes.push({
+            role: 'Town Crier',
+            icon: '\uD83D\uDCE2',
+            text: poisoned
+              ? `Tell ${tc.name}: ${minionNominated ? 'No' : 'Yes'} (give false info -- poisoned)`
+              : `Tell ${tc.name}: a Minion ${minionNominated ? 'did' : 'did not'} nominate today`,
+            color: poisoned ? 'text-orange' : 'text-accent',
+          });
+        }
+
+        // Empath (TB) - how many alive neighbors are evil?
+        if (rolesInPlay.has('empath')) {
+          const emp = rolesInPlay.get('empath')!;
+          const empIdx = players.findIndex(p => p.id === emp.id);
+          const alivePlayers = players.filter(p => p.alive);
+          const empAliveIdx = alivePlayers.findIndex(p => p.id === emp.id);
+          if (empAliveIdx >= 0 && alivePlayers.length > 1) {
+            const leftNeighbor = alivePlayers[(empAliveIdx - 1 + alivePlayers.length) % alivePlayers.length];
+            const rightNeighbor = alivePlayers[(empAliveIdx + 1) % alivePlayers.length];
+            let evilCount = 0;
+            for (const n of [leftNeighbor, rightNeighbor]) {
+              if (n && n.id !== emp.id) {
+                const r = getRoleById(n.role || '', customRoles);
+                if (r?.team === 'evil') evilCount++;
+              }
+            }
+            const poisoned = emp.poisoned || emp.drunkPoisoned;
+            notes.push({
+              role: 'Empath',
+              icon: '\uD83D\uDC9C',
+              text: poisoned
+                ? `Tell ${emp.name}: ${evilCount === 0 ? '1' : '0'} (give false info -- poisoned)`
+                : `Tell ${emp.name}: ${evilCount} of your alive neighbors ${evilCount === 1 ? 'is' : 'are'} evil`,
+              color: poisoned ? 'text-orange' : 'text-accent',
+            });
+          }
+        }
+
+        // Oracle (S&V) - how many dead players are evil?
+        if (rolesInPlay.has('oracle')) {
+          const orc = rolesInPlay.get('oracle')!;
+          const deadEvil = players.filter(p => !p.alive && p.role && getRoleById(p.role, customRoles)?.team === 'evil').length;
+          const poisoned = orc.poisoned || orc.drunkPoisoned;
+          notes.push({
+            role: 'Oracle',
+            icon: '\uD83D\uDD2E',
+            text: poisoned
+              ? `Tell ${orc.name}: ${deadEvil === 0 ? '1' : deadEvil - 1} (give false info -- poisoned)`
+              : `Tell ${orc.name}: ${deadEvil} dead player${deadEvil !== 1 ? 's are' : ' is'} evil`,
+            color: poisoned ? 'text-orange' : 'text-accent',
+          });
+        }
+
+        // Pending execution reminder
+        const pendingPlayers = players.filter(p => p.pendingExecution);
+        if (pendingPlayers.length > 0) {
+          notes.push({
+            role: 'Execution',
+            icon: '\u2694\uFE0F',
+            text: `${pendingPlayers.map(p => p.name).join(', ')} will die at dusk`,
+            color: 'text-red',
+          });
+        }
+
+        if (notes.length === 0) return null;
+
+        return (
+          <div className="bg-indigo-950/40 border border-indigo-500/20 rounded-xl p-4 space-y-2">
+            <h3 className="text-xs font-bold text-indigo-300 uppercase tracking-wider mb-2">Storyteller Notes</h3>
+            {notes.map((note, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-sm flex-shrink-0">{note.icon}</span>
+                <div className="text-sm">
+                  <span className="font-semibold text-fg-bright">{note.role}: </span>
+                  <span className={note.color}>{note.text}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* End of day */}
       <div className="flex gap-2">
         <button
