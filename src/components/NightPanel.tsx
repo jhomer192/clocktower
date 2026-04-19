@@ -30,6 +30,10 @@ export function NightPanel({
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [activeStep, setActiveStep] = useState<string | null>(null);
   const [actionNotes, setActionNotes] = useState<Record<string, string>>({});
+  // pendingActions type kept for reference but derived from the sets below
+  const [pendingPoisons, setPendingPoisons] = useState<Set<string>>(new Set());
+  const [pendingProtects, setPendingProtects] = useState<Set<string>>(new Set());
+  const [pendingKills, setPendingKills] = useState<Set<string>>(new Set());
 
   const nightLabel = isFirstNight ? 'Night 1 (First Night)' : `Night ${dayNumber}`;
 
@@ -58,38 +62,77 @@ export function NightPanel({
 
   const handlePoisonToggle = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
-    if (player) {
-      onUpdatePlayer(playerId, { poisoned: !player.poisoned });
-      const action = player.poisoned ? 'un-poisoned' : 'poisoned';
-      onAddLogEntry(nightLabel, `${player.name} was ${action}`);
-    }
+    if (!player) return;
+    setPendingPoisons(prev => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
   };
 
   const handleProtectToggle = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
-    if (player) {
-      onUpdatePlayer(playerId, { protected: !player.protected });
-      const action = player.protected ? 'unprotected' : 'protected by Monk';
-      onAddLogEntry(nightLabel, `${player.name} was ${action}`);
-    }
+    if (!player) return;
+    setPendingProtects(prev => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
   };
 
   const handleKill = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
-    if (player) {
-      // Check if protected or Soldier
-      if (player.protected) {
-        onAddLogEntry(nightLabel, `${player.name} was attacked but protected by the Monk`);
-        return;
+    if (!player) return;
+    setPendingKills(prev => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
+  };
+
+  const finalizeNight = () => {
+    // Apply all pending actions
+    for (const id of pendingPoisons) {
+      const p = players.find(pl => pl.id === id);
+      if (p) {
+        onUpdatePlayer(id, { poisoned: true });
+        onAddLogEntry(nightLabel, `${p.name} was poisoned`);
       }
-      const role = getRoleById(player.role || '', customRoles);
-      if (role?.id === 'soldier' && !player.poisoned) {
-        onAddLogEntry(nightLabel, `${player.name} (Soldier) was attacked but is safe from the Demon`);
-        return;
-      }
-      onUpdatePlayer(playerId, { alive: false });
-      onAddLogEntry(nightLabel, `${player.name} was killed by the Demon`);
     }
+    for (const id of pendingProtects) {
+      const p = players.find(pl => pl.id === id);
+      if (p) {
+        onUpdatePlayer(id, { protected: true });
+        onAddLogEntry(nightLabel, `${p.name} was protected by Monk`);
+      }
+    }
+    for (const id of pendingKills) {
+      const p = players.find(pl => pl.id === id);
+      if (!p) continue;
+      if (pendingProtects.has(id)) {
+        onAddLogEntry(nightLabel, `${p.name} was attacked but protected by the Monk`);
+        continue;
+      }
+      const role = getRoleById(p.role || '', customRoles);
+      if (role?.id === 'soldier' && !pendingPoisons.has(id) && !p.poisoned) {
+        onAddLogEntry(nightLabel, `${p.name} (Soldier) was attacked but is safe from the Demon`);
+        continue;
+      }
+      onUpdatePlayer(id, { alive: false });
+      onAddLogEntry(nightLabel, `${p.name} was killed by the Demon`);
+    }
+    // Clear pending
+    setPendingPoisons(new Set());
+    setPendingProtects(new Set());
+    setPendingKills(new Set());
+    // all pending cleared above
+    setCompletedSteps(new Set());
+    setActiveStep(null);
+    setActionNotes({});
+    onStartDay();
   };
 
   const handleCompleteStep = (step: NightStep) => {
@@ -103,10 +146,7 @@ export function NightPanel({
   };
 
   const handleTransitionToDay = () => {
-    setCompletedSteps(new Set());
-    setActiveStep(null);
-    setActionNotes({});
-    onStartDay();
+    finalizeNight();
   };
 
   const getRoleActionUI = (step: NightStep) => {
@@ -301,12 +341,33 @@ export function NightPanel({
         </div>
       )}
 
+      {/* Pending actions summary */}
+      {(pendingPoisons.size > 0 || pendingProtects.size > 0 || pendingKills.size > 0) && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-3">
+          <p className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">Pending (applied when night ends)</p>
+          <div className="space-y-1 text-sm">
+            {Array.from(pendingPoisons).map(id => {
+              const p = players.find(pl => pl.id === id);
+              return p ? <div key={`p-${id}`} className="text-purple-400">☠ {p.name} poisoned</div> : null;
+            })}
+            {Array.from(pendingProtects).map(id => {
+              const p = players.find(pl => pl.id === id);
+              return p ? <div key={`pr-${id}`} className="text-blue-400">🛡 {p.name} protected</div> : null;
+            })}
+            {Array.from(pendingKills).map(id => {
+              const p = players.find(pl => pl.id === id);
+              return p ? <div key={`k-${id}`} className="text-red-400">💀 {p.name} killed</div> : null;
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Proceed to Day */}
       <button
         onClick={handleTransitionToDay}
         className="w-full py-4 bg-accent text-bg font-bold text-lg rounded-xl active:scale-[0.98] transition-transform"
       >
-        Proceed to Day {dayNumber} →
+        End Night → Proceed to Day {dayNumber}
       </button>
     </div>
   );
