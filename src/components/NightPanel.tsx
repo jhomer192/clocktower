@@ -174,15 +174,41 @@ export function NightPanel({
   const handleCompleteStep = (step: NightStep) => {
     const key = stepKey(step);
     const note = actionNotes[key] || '';
+
+    // Warn if no action was recorded for roles that need one
+    const needsAction = ['poisoner', 'monk', 'imp', 'fang_gu', 'no_dashii', 'vigormortis', 'vortox',
+      'zombuul', 'pukka', 'shabaloth', 'po', 'witch', 'devils_advocate', 'butler',
+      'washerwoman', 'librarian', 'investigator', 'fortune_teller', 'dreamer',
+      'snake_charmer', 'innkeeper', 'sailor', 'exorcist', 'seamstress'];
+    if (!note && needsAction.includes(step.role.id)) {
+      if (!confirm(`No action recorded for ${step.player.name} (${step.role.name}). Mark as done anyway?`)) return;
+    }
+
     setCompletedSteps(prev => new Set([...prev, key]));
 
     let logText = `${step.player.name} (${step.role.name})`;
     if (note) logText += `: ${note}`;
+    else logText += ': No action taken';
     onAddLogEntry(nightLabel, logText);
   };
 
   const handleTransitionToDay = () => {
     finalizeNight();
+  };
+
+  // Status badges for player buttons so ST can see state at a glance
+  const playerBadges = (p: Player) => {
+    const badges: string[] = [];
+    if (!p.alive) badges.push('\u2620');
+    if (p.poisoned) badges.push('\u2623');
+    if (p.drunkPoisoned) badges.push('\uD83C\uDF7A');
+    if (p.protected) badges.push('\uD83D\uDEE1');
+    if (p.cursed) badges.push('\uD83E\uDDD9');
+    if (p.pendingExecution) badges.push('\u2694');
+    if (pendingKills.has(p.id)) badges.push('\uD83D\uDC80');
+    if (pendingPoisons.has(p.id)) badges.push('\u2623');
+    if (pendingProtects.has(p.id)) badges.push('\uD83D\uDEE1');
+    return badges.length > 0 ? ` ${badges.join('')}` : '';
   };
 
   const getRoleActionUI = (step: NightStep) => {
@@ -193,9 +219,9 @@ export function NightPanel({
       case 'poisoner':
         return (
           <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Choose a player to poison:</div>
+            <div className="text-xs text-fg-dim">Choose a player to poison (not yourself):</div>
             <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.alive).map(p => (
+              {players.filter(p => p.alive && p.id !== step.player.id).map(p => (
                 <button
                   key={p.id}
                   onClick={() => {
@@ -203,10 +229,10 @@ export function NightPanel({
                     setActionNotes(prev => ({ ...prev, [key]: `Poisoned ${p.name}` }));
                   }}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    p.poisoned ? 'bg-orange text-bg' : 'bg-surface2 text-fg hover:bg-orange-dim'
+                    pendingPoisons.has(p.id) ? 'bg-orange text-bg' : 'bg-surface2 text-fg hover:bg-orange-dim'
                   }`}
                 >
-                  {p.name} {p.poisoned ? '☠' : ''}
+                  {p.name}{playerBadges(p)}
                 </button>
               ))}
             </div>

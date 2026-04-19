@@ -223,6 +223,33 @@ export function DayPanel({
     <div className="p-4 pb-32 space-y-4">
       <h2 className="text-xl font-bold text-fg-bright">Day {dayNumber}</h2>
 
+      {/* Active effects summary - so ST can see state at a glance */}
+      {(() => {
+        const effects: { name: string; badge: string; color: string }[] = [];
+        for (const p of players) {
+          if (!p.alive) continue;
+          if (p.poisoned) effects.push({ name: p.name, badge: 'Poisoned', color: 'text-orange' });
+          if (p.drunkPoisoned) effects.push({ name: p.name, badge: 'Drunk', color: 'text-purple-400' });
+          if (p.cursed) effects.push({ name: p.name, badge: 'Cursed', color: 'text-purple-400' });
+          if (p.protected) effects.push({ name: p.name, badge: 'Protected', color: 'text-blue-400' });
+          if (p.devilProtected) effects.push({ name: p.name, badge: 'DA Protected', color: 'text-orange' });
+          if (p.pendingExecution) effects.push({ name: p.name, badge: 'Pending Death', color: 'text-red' });
+        }
+        if (effects.length === 0) return null;
+        return (
+          <div className="bg-surface rounded-xl p-3">
+            <p className="text-[10px] font-bold text-fg-dim uppercase tracking-wider mb-1.5">Active Effects</p>
+            <div className="flex flex-wrap gap-1.5">
+              {effects.map((e, i) => (
+                <span key={i} className={`text-xs px-2 py-1 rounded-lg bg-bg ${e.color} font-medium`}>
+                  {e.name}: {e.badge}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Discussion Timer */}
       <div className="bg-surface rounded-xl p-4">
         <div className="flex items-center justify-between mb-3">
@@ -565,18 +592,18 @@ export function DayPanel({
       })()}
 
       {/* End of day */}
-      <div className="flex gap-2">
-        <button
-          onClick={handleNoExecution}
-          className="flex-1 py-4 bg-surface2 text-fg font-semibold rounded-xl hover:bg-surface active:scale-[0.98] transition"
-        >
-          No Execution
-        </button>
+      <div className="space-y-2">
         <button
           onClick={handleProceedToNight}
-          className="flex-1 py-4 bg-accent text-bg font-bold rounded-xl active:scale-[0.98] transition-transform"
+          className="w-full py-4 bg-accent text-bg font-bold text-lg rounded-xl active:scale-[0.98] transition-transform"
         >
           → Night {dayNumber + 1}
+        </button>
+        <button
+          onClick={handleNoExecution}
+          className="w-full py-3 bg-surface2 text-fg-dim font-medium rounded-xl hover:bg-surface active:scale-[0.98] transition text-sm border border-border"
+        >
+          No Execution (skip to night)
         </button>
       </div>
 
