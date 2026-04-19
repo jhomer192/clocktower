@@ -101,6 +101,15 @@ export function useGameStore() {
     setState(prev => ({ ...prev, currentTab: tab }));
   }, []);
 
+  const setScript = useCallback((scriptId: string) => {
+    setState(prev => ({
+      ...prev,
+      scriptId,
+      // Clear role assignments when switching scripts
+      players: prev.players.map(p => ({ ...p, role: undefined, coverRole: undefined })),
+    }));
+  }, []);
+
   // Player management
   const addPlayer = useCallback((name: string) => {
     setState(prev => ({
@@ -241,6 +250,10 @@ export function useGameStore() {
     }));
   }, []);
 
+  const setCustomRoles = useCallback((roles: Role[]) => {
+    setState(prev => ({ ...prev, customRoles: roles }));
+  }, []);
+
   // End game: keep player names, clear everything else so a new game can start
   const endGame = useCallback(() => {
     setState(prev => ({
@@ -273,6 +286,7 @@ export function useGameStore() {
     addLogEntry,
     removeLastLog,
     setTab,
+    setScript,
     addPlayer,
     removePlayer,
     reorderPlayers,
@@ -288,6 +302,7 @@ export function useGameStore() {
     updateNomination,
     addCustomRole,
     removeCustomRole,
+    setCustomRoles,
     endGame,
     resetGame,
     saveSnapshot,

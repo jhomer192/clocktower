@@ -69,12 +69,15 @@ function App() {
               onSetCoverRole={store.setCoverRole}
               onStartGame={store.startGame}
               onAddLogEntry={store.addLogEntry}
+              onSetScript={store.setScript}
             />
             <div className="px-4 pb-24">
               <CustomRolesPanel
+                scriptId={state.scriptId}
                 customRoles={state.customRoles}
                 onAddCustomRole={store.addCustomRole}
                 onRemoveCustomRole={store.removeCustomRole}
+                onSetCustomRoles={store.setCustomRoles}
               />
             </div>
           </div>

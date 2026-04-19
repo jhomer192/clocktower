@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Player, Role, RoleType } from '../types/game';
-import { TROUBLE_BREWING_ROLES, getComposition, getRoleById } from '../data/roles';
+import { getComposition, getRoleById, getRolesForScript } from '../data/roles';
 
 interface SetupPanelProps {
   players: Player[];
@@ -13,6 +13,7 @@ interface SetupPanelProps {
   onSetCoverRole: (playerId: string, coverRoleId: string) => void;
   onStartGame: () => void;
   onAddLogEntry: (phase: string, text: string) => void;
+  onSetScript: (scriptId: string) => void;
 }
 
 const TYPE_COLORS: Record<RoleType, string> = {
@@ -40,11 +41,12 @@ export function SetupPanel({
   onSetCoverRole,
   onStartGame,
   onAddLogEntry,
+  onSetScript,
 }: SetupPanelProps) {
   const [newName, setNewName] = useState('');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
-  const roles = scriptId === 'trouble_brewing' ? TROUBLE_BREWING_ROLES : customRoles;
+  const roles = getRolesForScript(scriptId, customRoles);
 
   // Check if Baron is in play for composition adjustment
   const hasBaronInPlay = players.some(p => p.role === 'baron');
@@ -114,9 +116,23 @@ export function SetupPanel({
 
       {/* Script selection */}
       <div className="bg-surface rounded-xl p-4">
-        <label className="block text-sm text-fg-dim mb-1">Script</label>
-        <div className="text-fg-bright font-medium">Trouble Brewing</div>
-        <div className="text-xs text-fg-dim mt-1">The base game - recommended for new players</div>
+        <label className="block text-sm text-fg-dim mb-2">Script</label>
+        <select
+          value={scriptId}
+          onChange={e => onSetScript(e.target.value)}
+          className="w-full bg-bg border border-border rounded-lg px-3 py-3 text-fg-bright font-medium focus:border-accent focus:outline-none"
+        >
+          <option value="trouble_brewing">Trouble Brewing</option>
+          <option value="sects_and_violets">Sects &amp; Violets</option>
+          <option value="bad_moon_rising">Bad Moon Rising</option>
+          <option value="custom">Custom</option>
+        </select>
+        <div className="text-xs text-fg-dim mt-1.5">
+          {scriptId === 'trouble_brewing' && 'The base game -- recommended for new players'}
+          {scriptId === 'sects_and_violets' && 'Madness, manipulation, and deception'}
+          {scriptId === 'bad_moon_rising' && 'Protection, resurrection, and death at every turn'}
+          {scriptId === 'custom' && 'Mix roles from any script or create your own'}
+        </div>
       </div>
 
       {/* Player entry */}
