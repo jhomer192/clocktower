@@ -25,12 +25,17 @@ function App() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {state.setupComplete && store.canUndo && (
+          {state.setupComplete && (
             <button
               onClick={store.undoLastAction}
-              className="text-xs px-2 py-1.5 rounded bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors font-medium"
+              disabled={!store.canUndo}
+              className={`text-xs px-3 py-1.5 rounded font-semibold transition-colors ${
+                store.canUndo
+                  ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 active:scale-95'
+                  : 'bg-surface2 text-fg-dim opacity-30 cursor-not-allowed'
+              }`}
             >
-              Undo
+              ↩ Undo
             </button>
           )}
           {state.setupComplete && (
