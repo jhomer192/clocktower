@@ -77,6 +77,23 @@ export function DayPanel({
 
   const handleNominate = () => {
     if (!nominator || !nominee) return;
+    const ePlayer = players.find(p => p.id === nominee);
+    const nPlayer = players.find(p => p.id === nominator);
+
+    // Witch curse check: nominated player dies immediately
+    if (ePlayer?.cursed) {
+      onSaveSnapshot();
+      onUpdatePlayer(ePlayer.id, { alive: false, cursed: false });
+      onAddLogEntry(dayLabel, `${nPlayer?.name} nominated ${ePlayer?.name} -- WITCH CURSE: ${ePlayer.name} dies immediately!`);
+      // Still record the nomination
+      const nom: Nomination = { nominatorId: nominator, nomineeId: nominee, votes: [], executed: false };
+      onAddNomination(nom);
+      setNominator('');
+      setNominee('');
+      setNominating(false);
+      return;
+    }
+
     const nom: Nomination = {
       nominatorId: nominator,
       nomineeId: nominee,
@@ -84,13 +101,11 @@ export function DayPanel({
       executed: false,
     };
     onAddNomination(nom);
-    const nPlayer = players.find(p => p.id === nominator);
-    const ePlayer = players.find(p => p.id === nominee);
     onAddLogEntry(dayLabel, `${nPlayer?.name} nominated ${ePlayer?.name}`);
     setNominator('');
     setNominee('');
     setNominating(false);
-    setVotingIndex(nominations.length); // open voting on new nomination
+    setVotingIndex(nominations.length);
   };
 
   const toggleVote = (nomIdx: number, playerId: string) => {
@@ -125,6 +140,15 @@ export function DayPanel({
 
     // Save snapshot before execution (for undo)
     onSaveSnapshot();
+
+    // Check for Devil's Advocate protection
+    if (player.devilProtected) {
+      onUpdatePlayer(player.id, { devilProtected: false });
+      onUpdateNomination(nomIdx, { executed: true });
+      onAddLogEntry(dayLabel, `${player.name} was executed (${nom.votes.length} votes) but PROTECTED by Devil's Advocate -- survives!`);
+      setVotingIndex(null);
+      return;
+    }
 
     // Check for Saint
     const role = getRoleById(player.role || '', customRoles);
@@ -196,7 +220,7 @@ export function DayPanel({
   };
 
   return (
-    <div className="p-4 pb-24 space-y-4">
+    <div className="p-4 pb-32 space-y-4">
       <h2 className="text-xl font-bold text-fg-bright">Day {dayNumber}</h2>
 
       {/* Discussion Timer */}

@@ -47,7 +47,7 @@ export function PlayersPanel({ players, customRoles, onUpdatePlayer, onAddLogEnt
   const deadCount = players.filter(p => !p.alive).length;
 
   return (
-    <div className="p-4 pb-24 space-y-4">
+    <div className="p-4 pb-32 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-fg-bright">Players</h2>
         <div className="flex items-center gap-3">

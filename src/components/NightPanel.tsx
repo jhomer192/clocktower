@@ -664,7 +664,7 @@ export function NightPanel({
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
             <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
-              Tell them: {poisoned ? Math.max(1, minSteps + (Math.random() > 0.5 ? 1 : -1)) : minSteps} step{minSteps !== 1 ? 's' : ''}
+              Tell them: {poisoned ? Math.max(1, minSteps + 1) : minSteps} step{minSteps !== 1 ? 's' : ''}
               {poisoned ? ' (poisoned)' : ''}
             </div>
           </div>
@@ -750,41 +750,49 @@ export function NightPanel({
 
       // === INFO ROLES: pick players + show what to tell them ===
       case 'washerwoman': {
-        // Show 2 players, one is a particular Townsfolk
-        const townsfolk = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'townsfolk');
+        const townsfolk = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'townsfolk' && p.id !== step.player.id);
         return (
           <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a Townsfolk):</div>
+            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a Townsfolk). Not yourself.</div>
             <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.alive).map(p => {
+              {players.filter(p => p.id !== step.player.id).map(p => {
                 const selected = (actionNotes[key] || '').includes(p.name);
+                const role = getRoleById(p.role || '', customRoles);
+                const isTF = role?.type === 'townsfolk';
                 return (
                   <button key={p.id} onClick={() => {
-                    const current = actionNotes[key] || '';
-                    const names = current.split(', ').filter(Boolean);
-                    if (selected) {
-                      setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
-                    } else if (names.length < 2) {
-                      setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
-                    }
+                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
+                    else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
                   }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selected ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
-                  }`}>{p.name}{townsfolk.some(t => t.id === p.id) ? ' (TF)' : ''}</button>
+                  }`}>{p.name}{isTF ? ' (TF)' : ''}</button>
                 );
               })}
             </div>
-            {actionNotes[key] && <div className="text-xs text-accent">Tell them: one of [{actionNotes[key]}] is the [Townsfolk role]</div>}
+            {(() => {
+              const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+              if (names.length === 2) {
+                const tfPlayer = names.map(n => players.find(pl => pl.name === n)).find(pl => pl && getRoleById(pl.role || '', customRoles)?.type === 'townsfolk');
+                const roleName = tfPlayer ? getRoleById(tfPlayer.role || '', customRoles)?.name : null;
+                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                return <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>Tell them: one of [{names.join(', ')}] is the {poisoned ? '[give wrong role]' : (roleName || '[no TF selected]')}{poisoned ? ' (poisoned)' : ''}</div>;
+              }
+              return null;
+            })()}
           </div>
         );
       }
 
       case 'librarian': {
-        const outsiders = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'outsider');
+        const outsiders = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'outsider' && p.id !== step.player.id);
         return (
           <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be an Outsider, or say zero):</div>
+            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be an Outsider). Not yourself.</div>
             <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.alive).map(p => {
+              {players.filter(p => p.id !== step.player.id).map(p => {
+                const role = getRoleById(p.role || '', customRoles);
+                const isOS = role?.type === 'outsider';
                 const selected = (actionNotes[key] || '').includes(p.name);
                 return (
                   <button key={p.id} onClick={() => {
@@ -793,23 +801,33 @@ export function NightPanel({
                     else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
                   }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selected ? 'bg-cyan-600 text-bg' : 'bg-surface2 text-fg hover:bg-cyan-600/20'
-                  }`}>{p.name}{outsiders.some(t => t.id === p.id) ? ' (OS)' : ''}</button>
+                  }`}>{p.name}{isOS ? ' (OS)' : ''}</button>
                 );
               })}
             </div>
             {outsiders.length === 0 && <div className="text-xs text-cyan-400">No Outsiders in play -- tell them zero</div>}
-            {actionNotes[key] && <div className="text-xs text-cyan-400">Tell them: one of [{actionNotes[key]}] is the [Outsider role]</div>}
+            {(() => {
+              const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+              if (names.length === 2) {
+                const osPlayer = names.map(n => players.find(pl => pl.name === n)).find(pl => pl && getRoleById(pl.role || '', customRoles)?.type === 'outsider');
+                const roleName = osPlayer ? getRoleById(osPlayer.role || '', customRoles)?.name : null;
+                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                return <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : 'text-cyan-400'}`}>Tell them: one of [{names.join(', ')}] is the {poisoned ? '[give wrong role]' : (roleName || '[no OS selected]')}{poisoned ? ' (poisoned)' : ''}</div>;
+              }
+              return null;
+            })()}
           </div>
         );
       }
 
       case 'investigator': {
-        const minions = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'minion');
         return (
           <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a Minion):</div>
+            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a Minion). Not yourself.</div>
             <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.alive).map(p => {
+              {players.filter(p => p.id !== step.player.id).map(p => {
+                const role = getRoleById(p.role || '', customRoles);
+                const isMN = role?.type === 'minion';
                 const selected = (actionNotes[key] || '').includes(p.name);
                 return (
                   <button key={p.id} onClick={() => {
@@ -818,11 +836,20 @@ export function NightPanel({
                     else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
                   }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selected ? 'bg-orange text-bg' : 'bg-surface2 text-fg hover:bg-orange-dim'
-                  }`}>{p.name}{minions.some(t => t.id === p.id) ? ' (MN)' : ''}</button>
+                  }`}>{p.name}{isMN ? ' (MN)' : ''}</button>
                 );
               })}
             </div>
-            {actionNotes[key] && <div className="text-xs text-orange">Tell them: one of [{actionNotes[key]}] is the [Minion role]</div>}
+            {(() => {
+              const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+              if (names.length === 2) {
+                const mnPlayer = names.map(n => players.find(pl => pl.name === n)).find(pl => pl && getRoleById(pl.role || '', customRoles)?.type === 'minion');
+                const roleName = mnPlayer ? getRoleById(mnPlayer.role || '', customRoles)?.name : null;
+                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                return <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : 'text-orange'}`}>Tell them: one of [{names.join(', ')}] is the {poisoned ? '[give wrong role]' : (roleName || '[no MN selected]')}{poisoned ? ' (poisoned)' : ''}</div>;
+              }
+              return null;
+            })()}
           </div>
         );
       }
@@ -1005,7 +1032,7 @@ export function NightPanel({
   };
 
   return (
-    <div className="p-4 pb-24 space-y-4">
+    <div className="p-4 pb-32 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-fg-bright">{nightLabel}</h2>
         <span className="text-sm text-fg-dim">

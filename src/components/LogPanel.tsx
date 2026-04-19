@@ -18,7 +18,7 @@ export function LogPanel({ log, onRemoveLastLog }: LogPanelProps) {
   }
 
   return (
-    <div className="p-4 pb-24 space-y-4">
+    <div className="p-4 pb-32 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-fg-bright">Game Log</h2>
         {log.length > 0 && (

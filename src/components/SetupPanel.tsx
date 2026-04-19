@@ -79,10 +79,11 @@ export function SetupPanel({
 
   const handleAddPlayer = () => {
     const name = newName.trim();
-    if (name) {
-      onAddPlayer(name);
-      setNewName('');
-    }
+    if (!name) return;
+    // Prevent duplicate names
+    if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) return;
+    onAddPlayer(name);
+    setNewName('');
   };
 
   const movePlayer = (from: number, to: number) => {
@@ -121,7 +122,7 @@ export function SetupPanel({
   };
 
   return (
-    <div className="p-4 pb-24 space-y-6">
+    <div className="p-4 pb-32 space-y-6">
       <h2 className="text-xl font-bold text-fg-bright">Game Setup</h2>
 
       {/* Script selection */}
