@@ -117,14 +117,14 @@ export function NightPanel({
     for (const id of pendingPoisons) {
       const p = players.find(pl => pl.id === id);
       if (p) {
-        onUpdatePlayer(id, { poisoned: true });
-        onAddLogEntry(nightLabel, `${p.name} was poisoned`);
+        onUpdatePlayer(id, { poisoned: true, poisonedUntil: 'dusk' });
+        onAddLogEntry(nightLabel, `${p.name} was poisoned (until dusk)`);
       }
     }
     for (const id of pendingProtects) {
       const p = players.find(pl => pl.id === id);
       if (p) {
-        onUpdatePlayer(id, { protected: true });
+        onUpdatePlayer(id, { protected: true, protectedBy: 'monk' });
         onAddLogEntry(nightLabel, `${p.name} was protected by Monk`);
       }
     }
@@ -336,15 +336,415 @@ export function NightPanel({
               {players.filter(p => p.alive).map(p => (
                 <button
                   key={p.id}
-                  onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Cursed ${p.name}` }))}
+                  onClick={() => {
+                    // Clear previous curse, set new one
+                    players.forEach(pl => { if (pl.cursed) onUpdatePlayer(pl.id, { cursed: false }); });
+                    onUpdatePlayer(p.id, { cursed: true });
+                    setActionNotes(prev => ({ ...prev, [key]: `Cursed ${p.name}` }));
+                  }}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    actionNotes[key] === `Cursed ${p.name}` ? 'bg-purple-600 text-white' : 'bg-surface2 text-fg hover:bg-purple-600/20'
+                    p.cursed || actionNotes[key] === `Cursed ${p.name}` ? 'bg-purple-600 text-white' : 'bg-surface2 text-fg hover:bg-purple-600/20'
+                  }`}
+                >
+                  {p.name} {p.cursed ? '\u2620' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      // === DEVIL'S ADVOCATE (BMR): protect from execution ===
+      case 'devils_advocate':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Choose a player (different from last night): if executed tomorrow, they don't die:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    players.forEach(pl => { if (pl.devilProtected) onUpdatePlayer(pl.id, { devilProtected: false }); });
+                    onUpdatePlayer(p.id, { devilProtected: true });
+                    setActionNotes(prev => ({ ...prev, [key]: `Protected ${p.name} from execution` }));
+                  }}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    p.devilProtected || actionNotes[key]?.includes(p.name) ? 'bg-orange text-bg' : 'bg-surface2 text-fg hover:bg-orange-dim'
                   }`}
                 >
                   {p.name}
                 </button>
               ))}
             </div>
+          </div>
+        );
+
+      // === ASSASSIN (BMR): once per game kill ===
+      case 'assassin':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">
+              {step.player.usedAbility
+                ? 'Ability already used this game.'
+                : 'Once per game: choose a player, they die (bypasses all protection).'}
+            </div>
+            {!step.player.usedAbility && (
+              <div className="flex flex-wrap gap-1.5">
+                {players.filter(p => p.alive && p.id !== step.player.id).map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      handleKill(p.id);
+                      onUpdatePlayer(step.player.id, { usedAbility: true });
+                      setActionNotes(prev => ({ ...prev, [key]: `Assassinated ${p.name} (bypasses protection)` }));
+                    }}
+                    className="px-3 py-2 rounded-lg text-sm font-medium bg-surface2 text-fg hover:bg-red-dim transition-colors"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+      // === COURTIER (BMR): once per game, drunk for 3 nights ===
+      case 'courtier':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">
+              {step.player.usedAbility
+                ? 'Ability already used this game.'
+                : 'Once per game: choose a character, they are drunk for 3 nights & 3 days.'}
+            </div>
+            {!step.player.usedAbility && (
+              <div className="flex flex-wrap gap-1.5">
+                {players.filter(p => p.alive).map(p => {
+                  const r = getRoleById(p.role || '', customRoles);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        onUpdatePlayer(p.id, { drunkPoisoned: true, drunkUntil: `night_${dayNumber + 3}` });
+                        onUpdatePlayer(step.player.id, { usedAbility: true });
+                        setActionNotes(prev => ({ ...prev, [key]: `Made ${p.name} (${r?.name}) drunk for 3 nights` }));
+                      }}
+                      className="px-3 py-2 rounded-lg text-sm font-medium bg-surface2 text-fg hover:bg-purple-600/20 transition-colors"
+                    >
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+
+      // === PROFESSOR (BMR): once per game, resurrect a townsfolk ===
+      case 'professor':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">
+              {step.player.usedAbility
+                ? 'Ability already used this game.'
+                : 'Once per game: choose a dead player. If Townsfolk, they are resurrected.'}
+            </div>
+            {!step.player.usedAbility && (
+              <div className="flex flex-wrap gap-1.5">
+                {players.filter(p => !p.alive).map(p => {
+                  const r = getRoleById(p.role || '', customRoles);
+                  const isTownsfolk = r?.type === 'townsfolk';
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => {
+                        if (isTownsfolk) {
+                          onUpdatePlayer(p.id, { alive: true });
+                          onAddLogEntry(nightLabel, `${p.name} was resurrected by the Professor`);
+                        }
+                        onUpdatePlayer(step.player.id, { usedAbility: true });
+                        setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name}${isTownsfolk ? ' -- resurrected!' : ' -- not Townsfolk, nothing happens'}` }));
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isTownsfolk ? 'bg-surface2 text-fg hover:bg-green-dim' : 'bg-surface2 text-fg hover:bg-surface'
+                      }`}
+                    >
+                      {p.name} {isTownsfolk ? '(TF)' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+
+      // === GAMBLER (BMR): guess character or die ===
+      case 'gambler':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">They choose a player and guess their character. Wrong guess = death.</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => {
+                const r = getRoleById(p.role || '', customRoles);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Guessed ${p.name} is ${r?.name || '?'}` }))}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      (actionNotes[key] || '').includes(p.name) ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                );
+              })}
+            </div>
+            {actionNotes[key] && <div className="text-xs text-fg-dim">If they guessed wrong, they die. Record the guess above.</div>}
+          </div>
+        );
+
+      // === GOSSIP (BMR): true statement kills ===
+      case 'gossip':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Did their public statement today turn out to be true? If yes, choose who dies:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    handleKill(p.id);
+                    setActionNotes(prev => ({ ...prev, [key]: `Statement was true -- ${p.name} dies` }));
+                  }}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    pendingKills.has(p.id) ? 'bg-red text-bg' : 'bg-surface2 text-fg hover:bg-red-dim'
+                  }`}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setActionNotes(prev => ({ ...prev, [key]: 'Statement was false -- no one dies' }))}
+              className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
+                actionNotes[key]?.includes('false') ? 'bg-green text-bg' : 'bg-surface2 text-fg-dim hover:text-fg'
+              }`}
+            >
+              Statement was false
+            </button>
+          </div>
+        );
+
+      // === SEAMSTRESS (S&V): once per game, 2 players same alignment? ===
+      case 'seamstress':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">
+              {step.player.usedAbility
+                ? 'Ability already used this game.'
+                : 'Once per game: choose 2 players, learn if same alignment.'}
+            </div>
+            {!step.player.usedAbility && (
+              <>
+                <div className="flex flex-wrap gap-1.5">
+                  {players.filter(p => p.alive && p.id !== step.player.id).map(p => {
+                    const selected = (actionNotes[key] || '').includes(p.name);
+                    return (
+                      <button key={p.id} onClick={() => {
+                        const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+                        if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
+                        else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
+                      }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        selected ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                      }`}>{p.name}</button>
+                    );
+                  })}
+                </div>
+                {(() => {
+                  const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+                  if (names.length === 2) {
+                    const p1 = players.find(p => p.name === names[0]);
+                    const p2 = players.find(p => p.name === names[1]);
+                    if (p1 && p2) {
+                      const t1 = getRoleById(p1.role || '', customRoles)?.team;
+                      const t2 = getRoleById(p2.role || '', customRoles)?.team;
+                      const same = t1 === t2;
+                      const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                      return (
+                        <div className={`text-xs ${poisoned ? 'text-orange' : 'text-accent'}`}>
+                          Tell them: {poisoned ? (same ? 'Different' : 'Same') : (same ? 'Same' : 'Different')} alignment
+                          {poisoned ? ' (poisoned)' : ''}
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+              </>
+            )}
+          </div>
+        );
+
+      // === UNDERTAKER (TB): learn who died by execution ===
+      case 'undertaker': {
+        const executedToday = players.find(p => p.pendingExecution || (!p.alive && p.role));
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">You learn which character died by execution today.</div>
+            {executedToday ? (
+              <div className="text-sm text-accent font-semibold">
+                Tell them: {getRoleById(executedToday.role || '', customRoles)?.name || 'Unknown'}
+                {(step.player.poisoned || step.player.drunkPoisoned) ? ' (poisoned -- give false info!)' : ''}
+              </div>
+            ) : (
+              <div className="text-xs text-fg-dim">No one was executed today.</div>
+            )}
+          </div>
+        );
+      }
+
+      // === RAVENKEEPER (TB): if died tonight, learn a character ===
+      case 'ravenkeeper':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">If you died tonight, choose a player to learn their character:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.map(p => {
+                const r = getRoleById(p.role || '', customRoles);
+                return (
+                  <button key={p.id} onClick={() => {
+                    const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                    setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name}: ${poisoned ? '[give false character]' : r?.name || '?'}` }));
+                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    (actionNotes[key] || '').includes(p.name) ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                  }`}>{p.name}</button>
+                );
+              })}
+            </div>
+            {actionNotes[key] && <div className="text-xs text-accent">{actionNotes[key]}</div>}
+          </div>
+        );
+
+      // === CHEF (TB): how many pairs of evil ===
+      case 'chef': {
+        const aliveSorted = players.filter(p => p.alive);
+        let pairs = 0;
+        for (let i = 0; i < aliveSorted.length; i++) {
+          const curr = getRoleById(aliveSorted[i].role || '', customRoles);
+          const next = getRoleById(aliveSorted[(i + 1) % aliveSorted.length].role || '', customRoles);
+          if (curr?.team === 'evil' && next?.team === 'evil') pairs++;
+        }
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
+              Tell them: {poisoned ? (pairs === 0 ? '1' : Math.max(0, pairs - 1)) : pairs} pair{pairs !== 1 ? 's' : ''}
+              {poisoned ? ' (poisoned)' : ''}
+            </div>
+          </div>
+        );
+      }
+
+      // === CLOCKMAKER (S&V): steps from demon to nearest minion ===
+      case 'clockmaker': {
+        const aliveSorted = players.filter(p => p.alive);
+        const demonIdx = aliveSorted.findIndex(p => getRoleById(p.role || '', customRoles)?.type === 'demon');
+        let minSteps = aliveSorted.length;
+        if (demonIdx >= 0) {
+          for (let i = 0; i < aliveSorted.length; i++) {
+            if (getRoleById(aliveSorted[i].role || '', customRoles)?.type === 'minion') {
+              const cw = (i - demonIdx + aliveSorted.length) % aliveSorted.length;
+              const ccw = (demonIdx - i + aliveSorted.length) % aliveSorted.length;
+              minSteps = Math.min(minSteps, cw, ccw);
+            }
+          }
+        }
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">{step.role.ability}</div>
+            <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
+              Tell them: {poisoned ? Math.max(1, minSteps + (Math.random() > 0.5 ? 1 : -1)) : minSteps} step{minSteps !== 1 ? 's' : ''}
+              {poisoned ? ' (poisoned)' : ''}
+            </div>
+          </div>
+        );
+      }
+
+      // === GRANDMOTHER (BMR): know a good player ===
+      case 'grandmother': {
+        const goodPlayers = players.filter(p => p.alive && p.id !== step.player.id && getRoleById(p.role || '', customRoles)?.team === 'good');
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">Pick a good player to reveal to the Grandmother (if Demon kills them, Grandmother dies too):</div>
+            <div className="flex flex-wrap gap-1.5">
+              {goodPlayers.map(p => {
+                const r = getRoleById(p.role || '', customRoles);
+                return (
+                  <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Told: ${p.name} is the ${r?.name}` }))}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      (actionNotes[key] || '').includes(p.name) ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                    }`}>{p.name} ({r?.name})</button>
+                );
+              })}
+            </div>
+            {actionNotes[key] && <div className="text-xs text-accent">{actionNotes[key]}</div>}
+          </div>
+        );
+      }
+
+      // === CHAMBERMAID (BMR): how many of 2 players woke ===
+      case 'chambermaid':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">They choose 2 alive players. Count how many woke tonight due to their ability:</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive && p.id !== step.player.id).map(p => {
+                const selected = (actionNotes[key] || '').includes(p.name);
+                const r = getRoleById(p.role || '', customRoles);
+                const wakes = (r?.otherNights ?? 0) > 0;
+                return (
+                  <button key={p.id} onClick={() => {
+                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
+                    else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
+                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selected ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                  }`}>{p.name} {wakes ? '(wakes)' : ''}</button>
+                );
+              })}
+            </div>
+            {(() => {
+              const names = (actionNotes[key] || '').split(', ').filter(Boolean);
+              if (names.length === 2) {
+                const count = names.filter(n => {
+                  const p = players.find(pl => pl.name === n);
+                  if (!p) return false;
+                  const r = getRoleById(p.role || '', customRoles);
+                  return (r?.otherNights ?? 0) > 0;
+                }).length;
+                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                return <div className={`text-xs ${poisoned ? 'text-orange' : 'text-accent'}`}>Tell them: {poisoned ? (count === 0 ? 1 : 0) : count}{poisoned ? ' (poisoned)' : ''}</div>;
+              }
+              return null;
+            })()}
+          </div>
+        );
+
+      // === LUNATIC (BMR): thinks they're demon, show them kills ===
+      case 'lunatic':
+        return (
+          <div className="space-y-2">
+            <div className="text-xs text-fg-dim">The Lunatic thinks they are the Demon. Let them choose a "kill" (nothing happens):</div>
+            <div className="flex flex-wrap gap-1.5">
+              {players.filter(p => p.alive).map(p => (
+                <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `"Killed" ${p.name} (nothing happens)` }))}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    (actionNotes[key] || '').includes(p.name) ? 'bg-red-dim text-red' : 'bg-surface2 text-fg hover:bg-red-dim'
+                  }`}>{p.name}</button>
+              ))}
+            </div>
+            {actionNotes[key] && <div className="text-xs text-fg-dim italic">{actionNotes[key]}</div>}
           </div>
         );
 

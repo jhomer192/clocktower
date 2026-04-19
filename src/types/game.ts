@@ -18,14 +18,20 @@ export interface Player {
   id: string;
   name: string;
   role?: string;        // role id
-  coverRole?: string;   // for Drunk: the role they think they are
+  coverRole?: string;   // for Drunk/Evil Twin: cover role or twin player id
   alive: boolean;
   pendingExecution?: boolean; // executed today, dies at night
   ghostVoteUsed: boolean;
   poisoned: boolean;
+  poisonedUntil?: string;     // 'dusk' (clears at dusk), 'night_X' (clears at end of night X), 'permanent'
   protected: boolean;
-  drunkPoisoned: boolean; // drunk = permanently "poisoned"
-  effects: string[];    // free-text effects
+  protectedBy?: string;       // role id that protected them (monk, innkeeper, etc.)
+  drunkPoisoned: boolean;     // drunk = permanently "poisoned"
+  drunkUntil?: string;        // 'dusk', 'night_X', 'permanent'
+  cursed?: boolean;           // witch curse - die if nominated
+  devilProtected?: boolean;   // devil's advocate - don't die if executed tomorrow
+  usedAbility?: boolean;      // once-per-game ability used (slayer, seamstress, courtier, professor, assassin)
+  effects: string[];          // free-text effects
 }
 
 export interface NightAction {

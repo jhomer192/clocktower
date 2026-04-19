@@ -200,23 +200,43 @@ export function useGameStore() {
 
   const advanceToNextNight = useCallback(() => {
     saveSnapshot('advanceToNextNight');
-    setState(prev => ({
-      ...prev,
-      phase: 'night',
-      dayNumber: prev.dayNumber + 1,
-      isFirstNight: false,
-      nightActions: [],
-      nominations: [],
-      currentTab: 'game',
-      players: prev.players.map(p => ({
-        ...p,
-        protected: false,
-        poisoned: p.drunkPoisoned ? true : false,
-        // Apply pending executions at dusk
-        alive: p.pendingExecution ? false : p.alive,
-        pendingExecution: false,
-      })),
-    }));
+    setState(prev => {
+      const nextNight = prev.dayNumber + 1;
+      return {
+        ...prev,
+        phase: 'night',
+        dayNumber: nextNight,
+        isFirstNight: false,
+        nightActions: [],
+        nominations: [],
+        currentTab: 'game',
+        players: prev.players.map(p => {
+          // Clear "until dusk" effects and "until night X" effects
+          const poisonExpired = p.poisonedUntil === 'dusk' || p.poisonedUntil === `night_${nextNight}`;
+          const drunkExpired = p.drunkUntil === 'dusk' || p.drunkUntil === `night_${nextNight}`;
+
+          return {
+            ...p,
+            // Apply pending executions at dusk
+            alive: p.pendingExecution ? false : p.alive,
+            pendingExecution: false,
+            // Clear protection each night
+            protected: false,
+            protectedBy: undefined,
+            // Clear witch curse (new one set each night)
+            cursed: false,
+            // Clear devil's advocate protection (new one set each night)
+            devilProtected: false,
+            // Handle poison timing
+            poisoned: poisonExpired ? (p.drunkPoisoned ? true : false) : p.poisoned,
+            poisonedUntil: poisonExpired ? undefined : p.poisonedUntil,
+            // Handle drunk timing
+            drunkPoisoned: drunkExpired ? false : p.drunkPoisoned,
+            drunkUntil: drunkExpired ? undefined : p.drunkUntil,
+          };
+        }),
+      };
+    });
   }, []);
 
   // Night actions
