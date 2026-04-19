@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useGameStore } from './hooks/useGameStore';
 import { ThemePicker } from './components/ThemePicker';
 import { TabBar } from './components/TabBar';
@@ -7,10 +8,37 @@ import { DayPanel } from './components/DayPanel';
 import { PlayersPanel } from './components/PlayersPanel';
 import { LogPanel } from './components/LogPanel';
 import { CustomRolesPanel } from './components/CustomRolesPanel';
+import { createPortal } from 'react-dom';
+
+const SYMBOL_KEY = [
+  { icon: '\u2620\uFE0F', label: 'Dead' },
+  { icon: '\u2623\uFE0F', label: 'Poisoned' },
+  { icon: '\uD83C\uDF7A', label: 'Drunk' },
+  { icon: '\uD83D\uDEE1\uFE0F', label: 'Protected (Monk/Innkeeper)' },
+  { icon: '\uD83E\uDDD9', label: 'Witch Cursed (dies if nominated)' },
+  { icon: '\u2694\uFE0F', label: 'Pending Execution (dies at dusk)' },
+  { icon: '\uD83D\uDC80', label: 'Marked for Kill (pending night end)' },
+  { icon: '\uD83D\uDC7B', label: 'Ghost Vote Available' },
+];
+
+const BADGE_KEY = [
+  { color: 'bg-emerald-500', label: 'Alive' },
+  { color: 'bg-red-500', label: 'Dead' },
+  { color: 'bg-amber-500', label: 'Missed/Pending' },
+  { color: 'bg-purple-500', label: 'Gift/Special Encounter' },
+];
+
+const COLOR_KEY = [
+  { color: 'text-accent', label: 'Townsfolk' },
+  { color: 'text-cyan', label: 'Outsider' },
+  { color: 'text-orange', label: 'Minion' },
+  { color: 'text-red', label: 'Demon' },
+];
 
 function App() {
   const store = useGameStore();
   const { state } = store;
+  const [showInfo, setShowInfo] = useState(false);
 
   return (
     <div className="min-h-full flex flex-col bg-bg">
@@ -50,6 +78,13 @@ function App() {
               Reset
             </button>
           )}
+          <button
+            onClick={() => setShowInfo(true)}
+            className="w-8 h-8 rounded-full bg-surface2 text-fg-dim hover:text-fg text-sm font-bold flex items-center justify-center transition-colors"
+            title="Symbol key"
+          >
+            ?
+          </button>
           <ThemePicker />
         </div>
       </header>
@@ -185,6 +220,87 @@ function App() {
         onChange={store.setTab}
         setupComplete={state.setupComplete}
       />
+
+      {/* Info / Symbol Key modal */}
+      {showInfo && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowInfo(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-bg-raised shadow-2xl border border-border max-h-[85vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h2 className="text-lg font-bold text-fg-bright">Symbol Key</h2>
+              <button onClick={() => setShowInfo(false)} className="text-fg-dim hover:text-fg text-2xl leading-none">&times;</button>
+            </div>
+            <div className="px-6 py-4 overflow-y-auto flex-1 space-y-5">
+              {/* Status Icons */}
+              <div>
+                <h3 className="text-xs font-bold text-fg-dim uppercase tracking-wider mb-2">Status Icons</h3>
+                <div className="space-y-2">
+                  {SYMBOL_KEY.map(s => (
+                    <div key={s.label} className="flex items-center gap-3">
+                      <span className="text-lg w-8 text-center">{s.icon}</span>
+                      <span className="text-sm text-fg">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Role Colors */}
+              <div>
+                <h3 className="text-xs font-bold text-fg-dim uppercase tracking-wider mb-2">Role Types</h3>
+                <div className="space-y-2">
+                  {COLOR_KEY.map(c => (
+                    <div key={c.label} className="flex items-center gap-3">
+                      <span className={`text-sm font-bold w-8 text-center ${c.color}`}>{c.label.charAt(0)}</span>
+                      <span className="text-sm text-fg">{c.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Night Flow */}
+              <div>
+                <h3 className="text-xs font-bold text-fg-dim uppercase tracking-wider mb-2">Night Flow</h3>
+                <div className="text-sm text-fg-dim space-y-1">
+                  <p>1. Roles wake in order (lowest number first)</p>
+                  <p>2. Pick targets / record info for each role</p>
+                  <p>3. Click "Mark Done" to complete each step</p>
+                  <p>4. Pending actions (poison, protect, kill) apply when you click "End Night"</p>
+                  <p>5. Poisoner acts first, so their poison affects later roles that night</p>
+                </div>
+              </div>
+
+              {/* Day Flow */}
+              <div>
+                <h3 className="text-xs font-bold text-fg-dim uppercase tracking-wider mb-2">Day Flow</h3>
+                <div className="text-sm text-fg-dim space-y-1">
+                  <p>1. Check Storyteller Notes for auto-computed info</p>
+                  <p>2. Each player can nominate once per day</p>
+                  <p>3. Each player can be nominated once per day</p>
+                  <p>4. Executed players stay alive for voting that day (die at dusk)</p>
+                  <p>5. Dead players get one ghost vote for the whole game</p>
+                </div>
+              </div>
+
+              {/* Tips */}
+              <div>
+                <h3 className="text-xs font-bold text-fg-dim uppercase tracking-wider mb-2">Tips</h3>
+                <div className="text-sm text-fg-dim space-y-1">
+                  <p>Undo reverts the entire game state (including deaths, effects, phase)</p>
+                  <p>Active Effects bar on the day view shows all current statuses</p>
+                  <p>Storyteller Notes auto-compute info for Flowergirl, Town Crier, Empath, Oracle</p>
+                  <p>Orange text means "give false info" (player is poisoned or drunk)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
