@@ -1,0 +1,97 @@
+/* 4 canonical themes */
+
+[data-theme="tokyo-night"] {
+  --bg: #1a1b26;
+  --bg-raised: #1f2335;
+  --surface: #24283b;
+  --surface2: #2f3549;
+  --border: #3b4261;
+  --fg: #a9b1d6;
+  --fg-dim: #565f89;
+  --fg-bright: #c0caf5;
+  --accent: #7aa2f7;
+  --accent-dim: rgba(122, 162, 247, 0.15);
+  --red: #f7768e;
+  --red-dim: rgba(247, 118, 142, 0.15);
+  --green: #9ece6a;
+  --green-dim: rgba(158, 206, 106, 0.15);
+  --yellow: #e0af68;
+  --yellow-dim: rgba(224, 175, 104, 0.15);
+  --purple: #bb9af7;
+  --purple-dim: rgba(187, 154, 247, 0.15);
+  --orange: #ff9e64;
+  --orange-dim: rgba(255, 158, 100, 0.15);
+  --cyan: #7dcfff;
+}
+
+[data-theme="miami"] {
+  --bg: #1a1025;
+  --bg-raised: #211333;
+  --surface: #2a1840;
+  --surface2: #3a2255;
+  --border: #4a2d6e;
+  --fg: #e0b0ff;
+  --fg-dim: #8866aa;
+  --fg-bright: #f5d0ff;
+  --accent: #ff6ac1;
+  --accent-dim: rgba(255, 106, 193, 0.15);
+  --red: #ff5555;
+  --red-dim: rgba(255, 85, 85, 0.15);
+  --green: #69ff94;
+  --green-dim: rgba(105, 255, 148, 0.15);
+  --yellow: #ffffa5;
+  --yellow-dim: rgba(255, 255, 165, 0.15);
+  --purple: #d6acff;
+  --purple-dim: rgba(214, 172, 255, 0.15);
+  --orange: #ffb86c;
+  --orange-dim: rgba(255, 184, 108, 0.15);
+  --cyan: #8be9fd;
+}
+
+[data-theme="matcha"] {
+  --bg: #1a1e1a;
+  --bg-raised: #212821;
+  --surface: #2a332a;
+  --surface2: #354035;
+  --border: #3e4f3e;
+  --fg: #a8c0a8;
+  --fg-dim: #6b8a6b;
+  --fg-bright: #d0e8d0;
+  --accent: #7ec87e;
+  --accent-dim: rgba(126, 200, 126, 0.15);
+  --red: #e06c75;
+  --red-dim: rgba(224, 108, 117, 0.15);
+  --green: #98c379;
+  --green-dim: rgba(152, 195, 121, 0.15);
+  --yellow: #d19a66;
+  --yellow-dim: rgba(209, 154, 102, 0.15);
+  --purple: #c678dd;
+  --purple-dim: rgba(198, 120, 221, 0.15);
+  --orange: #d49a6a;
+  --orange-dim: rgba(212, 154, 106, 0.15);
+  --cyan: #56b6c2;
+}
+
+[data-theme="gruvbox"] {
+  --bg: #282828;
+  --bg-raised: #32302f;
+  --surface: #3c3836;
+  --surface2: #504945;
+  --border: #665c54;
+  --fg: #d5c4a1;
+  --fg-dim: #928374;
+  --fg-bright: #fbf1c7;
+  --accent: #fabd2f;
+  --accent-dim: rgba(250, 189, 47, 0.15);
+  --red: #fb4934;
+  --red-dim: rgba(251, 73, 52, 0.15);
+  --green: #b8bb26;
+  --green-dim: rgba(184, 187, 38, 0.15);
+  --yellow: #fabd2f;
+  --yellow-dim: rgba(250, 189, 47, 0.15);
+  --purple: #d3869b;
+  --purple-dim: rgba(211, 134, 155, 0.15);
+  --orange: #fe8019;
+  --orange-dim: rgba(254, 128, 25, 0.15);
+  --cyan: #8ec07c;
+}
