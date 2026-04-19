@@ -143,11 +143,28 @@ export function NightPanel({
       onUpdatePlayer(id, { alive: false });
       onAddLogEntry(nightLabel, `${p.name} was killed by the Demon`);
     }
+    // Log night summary with all role actions
+    const summaryLines: string[] = [];
+    for (const step of steps) {
+      const key = stepKey(step);
+      if (completedSteps.has(key)) {
+        const note = actionNotes[key];
+        summaryLines.push(`${step.player.name} (${step.role.name})${note ? `: ${note}` : ''}`);
+      }
+    }
+    if (summaryLines.length > 0) {
+      onAddLogEntry(nightLabel, `Night summary:\n${summaryLines.join('\n')}`);
+    }
+
+    // Log who is alive going into day
+    const aliveAfterNight = players.filter(p => p.alive && !pendingKills.has(p.id)).length
+      + players.filter(p => pendingKills.has(p.id) && (pendingProtects.has(p.id) || (getRoleById(p.role || '', customRoles)?.id === 'soldier' && !pendingPoisons.has(p.id) && !p.poisoned))).length;
+    onAddLogEntry(nightLabel, `${aliveAfterNight} players alive going into Day ${dayNumber}`);
+
     // Clear pending
     setPendingPoisons(new Set());
     setPendingProtects(new Set());
     setPendingKills(new Set());
-    // all pending cleared above
     setCompletedSteps(new Set());
     setActiveStep(null);
     setActionNotes({});

@@ -170,6 +170,28 @@ export function DayPanel({
   };
 
   const handleProceedToNight = () => {
+    // Log full day summary before transitioning
+    if (nominations.length > 0) {
+      const nomSummaries = nominations.map((nom, idx) => {
+        const nominator = players.find(p => p.id === nom.nominatorId);
+        const nominee = players.find(p => p.id === nom.nomineeId);
+        const voterNames = nom.votes.map(vid => players.find(p => p.id === vid)?.name || '?');
+        const result = nom.executed ? 'EXECUTED' : nom.votes.length >= executionThreshold ? 'PASSED (not executed)' : 'Failed';
+        return `${nominator?.name} nominated ${nominee?.name}: ${nom.votes.length} votes [${voterNames.join(', ')}] - ${result}`;
+      });
+      onAddLogEntry(dayLabel, `Day summary:\n${nomSummaries.join('\n')}`);
+    }
+
+    // Log pending executions
+    const pending = players.filter(p => p.pendingExecution);
+    if (pending.length > 0) {
+      onAddLogEntry(dayLabel, `${pending.map(p => p.name).join(', ')} died at dusk (execution)`);
+    }
+
+    // Log alive count going into night
+    const aliveAfter = players.filter(p => p.alive && !p.pendingExecution).length;
+    onAddLogEntry(dayLabel, `${aliveAfter} players alive going into Night ${dayNumber + 1}`);
+
     onAdvanceToNextNight();
   };
 
