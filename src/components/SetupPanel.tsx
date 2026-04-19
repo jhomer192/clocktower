@@ -98,10 +98,13 @@ export function SetupPanel({
 
   // Check if any Drunk needs a cover role
   const drunksNeedingCover = players.filter(p => p.role === 'drunk' && !p.coverRole);
+  // Check if any Evil Twin needs a good twin
+  const evilTwinsNeedingTwin = players.filter(p => p.role === 'evil_twin' && !p.coverRole);
 
   const handleStart = () => {
     if (!canStart) return;
-    if (drunksNeedingCover.length > 0) return; // Force cover role selection
+    if (drunksNeedingCover.length > 0) return;
+    if (evilTwinsNeedingTwin.length > 0) return;
     const roleNames = players.map(p => {
       const r = getRoleById(p.role!, customRoles);
       return `${p.name} = ${r?.name || '?'}`;
@@ -240,6 +243,28 @@ export function SetupPanel({
         )}
       </div>
 
+      {/* Evil Twin: pick the good twin */}
+      {players.filter(p => p.role === 'evil_twin' && !p.coverRole).map(player => (
+        <div key={player.id} className="bg-red-dim border border-red/30 rounded-xl p-4">
+          <div className="text-red font-semibold mb-1">
+            {player.name} is the Evil Twin
+          </div>
+          <div className="text-sm text-fg-dim mb-2">
+            Which good player is their twin? (The good twin knows who the Evil Twin is.)
+          </div>
+          <select
+            value={player.coverRole || ''}
+            onChange={e => onSetCoverRole(player.id, e.target.value)}
+            className="w-full bg-surface text-fg-bright rounded-lg px-3 py-3 border border-border focus:border-accent focus:outline-none"
+          >
+            <option value="">Select the good twin...</option>
+            {players.filter(p => p.id !== player.id && p.role && getRoleById(p.role, customRoles)?.team === 'good').map(p => (
+              <option key={p.id} value={p.id}>{p.name} ({getRoleById(p.role!, customRoles)?.name})</option>
+            ))}
+          </select>
+        </div>
+      ))}
+
       {/* Drunk cover role */}
       {drunksNeedingCover.map(player => (
         <div key={player.id} className="bg-purple-dim border border-purple/30 rounded-xl p-4">
@@ -292,7 +317,12 @@ export function SetupPanel({
       {/* Role reference */}
       <details className="bg-surface rounded-xl">
         <summary className="p-4 text-fg-dim text-sm cursor-pointer hover:text-fg">
-          Role Reference (Trouble Brewing)
+          Role Reference ({
+            scriptId === 'trouble_brewing' ? 'Trouble Brewing' :
+            scriptId === 'sects_and_violets' ? 'Sects & Violets' :
+            scriptId === 'bad_moon_rising' ? 'Bad Moon Rising' :
+            'Custom'
+          })
         </summary>
         <div className="px-4 pb-4 space-y-3">
           {(['townsfolk', 'outsider', 'minion', 'demon'] as RoleType[]).map(type => (

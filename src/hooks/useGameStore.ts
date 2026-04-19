@@ -208,7 +208,14 @@ export function useGameStore() {
       nightActions: [],
       nominations: [],
       currentTab: 'game',
-      players: prev.players.map(p => ({ ...p, protected: false, poisoned: p.drunkPoisoned ? true : false })),
+      players: prev.players.map(p => ({
+        ...p,
+        protected: false,
+        poisoned: p.drunkPoisoned ? true : false,
+        // Apply pending executions at dusk
+        alive: p.pendingExecution ? false : p.alive,
+        pendingExecution: false,
+      })),
     }));
   }, []);
 

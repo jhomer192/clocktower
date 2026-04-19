@@ -20,6 +20,7 @@ export interface Player {
   role?: string;        // role id
   coverRole?: string;   // for Drunk: the role they think they are
   alive: boolean;
+  pendingExecution?: boolean; // executed today, dies at night
   ghostVoteUsed: boolean;
   poisoned: boolean;
   protected: boolean;
