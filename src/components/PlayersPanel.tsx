@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Player, Role, RoleType } from '../types/game';
 import { getRoleById, TROUBLE_BREWING_ROLES } from '../data/roles';
+import { ReminderTokenPicker } from './ReminderTokenPicker';
 
 interface PlayersPanelProps {
   players: Player[];
@@ -18,7 +19,16 @@ const TYPE_COLORS: Record<RoleType, string> = {
 
 export function PlayersPanel({ players, customRoles, onUpdatePlayer, onAddLogEntry }: PlayersPanelProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [tokenPickerId, setTokenPickerId] = useState<string | null>(null);
   const [undoStack, setUndoStack] = useState<{ playerId: string; changes: Partial<Player>; label: string }[]>([]);
+
+  const addToken = (player: Player, label: string) => {
+    applyChange(player.id, { effects: [...player.effects, label] }, `${player.name} +[${label}]`);
+  };
+  const removeToken = (player: Player, index: number) => {
+    const label = player.effects[index];
+    applyChange(player.id, { effects: player.effects.filter((_, i) => i !== index) }, `${player.name} -[${label}]`);
+  };
 
   const applyChange = (id: string, changes: Partial<Player>, label: string) => {
     const player = players.find(p => p.id === id);
@@ -189,6 +199,25 @@ export function PlayersPanel({ players, customRoles, onUpdatePlayer, onAddLogEnt
                       {player.ghostVoteUsed ? 'Ghost Vote Used — Restore' : 'Ghost Vote Available — Mark Used'}
                     </button>
                   )}
+
+                  {/* Reminder tokens */}
+                  <div className="space-y-1.5">
+                    <button
+                      onClick={() => setTokenPickerId(tokenPickerId === player.id ? null : player.id)}
+                      className="w-full py-2 rounded-lg bg-surface2 text-fg-dim hover:text-fg text-xs font-medium"
+                    >
+                      {tokenPickerId === player.id ? 'Hide Reminder Tokens' : `Reminder Tokens${player.effects.length > 0 ? ` (${player.effects.length})` : ''}`}
+                    </button>
+                    {tokenPickerId === player.id && (
+                      <ReminderTokenPicker
+                        player={player}
+                        customRoles={customRoles}
+                        players={players}
+                        onAddToken={(label) => addToken(player, label)}
+                        onRemoveToken={(index) => removeToken(player, index)}
+                      />
+                    )}
+                  </div>
 
                   {/* Role swap (for Imp starpass, Scarlet Woman, etc.) */}
                   <details className="text-xs">
