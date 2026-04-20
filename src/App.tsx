@@ -8,7 +8,38 @@ import { DayPanel } from './components/DayPanel';
 import { PlayersPanel } from './components/PlayersPanel';
 import { LogPanel } from './components/LogPanel';
 import { CustomRolesPanel } from './components/CustomRolesPanel';
+import { getRoleById } from './data/roles';
+import type { Player, Role } from './types/game';
 import { createPortal } from 'react-dom';
+
+// Detect end-of-game conditions. Returns null if game continues.
+function detectWinner(players: Player[], customRoles: Role[]): { winner: 'good' | 'evil'; reason: string } | null {
+  const alivePlayers = players.filter(p => p.alive && !p.pendingExecution);
+  const demons = players.filter(p => {
+    const r = getRoleById(p.role || '', customRoles);
+    return r?.type === 'demon';
+  });
+  const demonAlive = demons.some(d => d.alive && !d.pendingExecution);
+
+  // Saint dead or pending execution -> evil wins (Saint must not be executed)
+  const saintDying = players.some(p => p.role === 'saint' && (!p.alive || p.pendingExecution));
+  if (saintDying) return { winner: 'evil', reason: 'The Saint was executed' };
+
+  // If no demon has been assigned yet, don't trigger (game still in setup edge case)
+  if (demons.length === 0) return null;
+
+  // All demons dead -> good wins
+  if (!demonAlive && demons.length > 0) {
+    return { winner: 'good', reason: 'The demon is dead' };
+  }
+
+  // 2 or fewer alive and demon still alive -> evil wins
+  if (alivePlayers.length <= 2 && demonAlive) {
+    return { winner: 'evil', reason: 'Only 2 players remain with the demon alive' };
+  }
+
+  return null;
+}
 
 const SYMBOL_KEY = [
   { icon: '\u2620\uFE0F', label: 'Dead' },
@@ -19,13 +50,6 @@ const SYMBOL_KEY = [
   { icon: '\u2694\uFE0F', label: 'Pending Execution (dies at dusk)' },
   { icon: '\uD83D\uDC80', label: 'Marked for Kill (pending night end)' },
   { icon: '\uD83D\uDC7B', label: 'Ghost Vote Available' },
-];
-
-const BADGE_KEY = [
-  { color: 'bg-emerald-500', label: 'Alive' },
-  { color: 'bg-red-500', label: 'Dead' },
-  { color: 'bg-amber-500', label: 'Missed/Pending' },
-  { color: 'bg-purple-500', label: 'Gift/Special Encounter' },
 ];
 
 const COLOR_KEY = [
@@ -39,6 +63,10 @@ function App() {
   const store = useGameStore();
   const { state } = store;
   const [showInfo, setShowInfo] = useState(false);
+  const [dismissedWinner, setDismissedWinner] = useState<string | null>(null);
+
+  const winner = state.setupComplete ? detectWinner(state.players, state.customRoles) : null;
+  const showWinnerBanner = winner && dismissedWinner !== winner.reason;
 
   return (
     <div className="min-h-full flex flex-col bg-bg">
@@ -90,7 +118,7 @@ function App() {
       </header>
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto pb-20">
         {state.currentTab === 'setup' && (
           <div>
             <SetupPanel
@@ -120,6 +148,40 @@ function App() {
 
         {state.currentTab === 'game' && state.setupComplete && (
           <div>
+            {/* Winner banner */}
+            {showWinnerBanner && (
+              <div className={`sticky top-[52px] z-20 px-4 py-3 border-b-2 ${
+                winner!.winner === 'good' ? 'bg-emerald-950/95 border-emerald-500 text-emerald-200' : 'bg-red-950/95 border-red-500 text-red-200'
+              }`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-bold">
+                      {winner!.winner === 'good' ? '🏆 Good wins!' : '💀 Evil wins!'}
+                    </div>
+                    <div className="text-xs opacity-80">{winner!.reason}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setDismissedWinner(winner!.reason)}
+                      className="text-xs px-3 py-1.5 rounded bg-surface2 text-fg-dim hover:text-fg"
+                    >
+                      Keep playing
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm('End the game? Player names will be kept for a new game.')) {
+                          store.endGame();
+                          setDismissedWinner(null);
+                        }
+                      }}
+                      className="text-xs px-3 py-1.5 rounded bg-accent/20 text-accent font-semibold hover:bg-accent/30"
+                    >
+                      End Game
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Phase indicator -- sticky so you always know where you are */}
             <div className={`sticky top-[52px] z-10 px-4 py-2.5 border-b border-border ${
               state.phase === 'night'
@@ -162,7 +224,13 @@ function App() {
               <div className="text-[10px] mt-1 opacity-60">
                 {state.phase === 'night'
                   ? (state.isFirstNight ? 'First night -- wake roles in order below' : 'Wake roles in order, record actions')
-                  : `${state.players.filter(p => p.alive).length} alive -- discuss and nominate`
+                  : (() => {
+                      const alive = state.players.filter(p => p.alive).length;
+                      const pending = state.players.filter(p => p.alive && p.pendingExecution).length;
+                      return pending > 0
+                        ? `${alive} alive (${pending} pending execution) -- discuss and nominate`
+                        : `${alive} alive -- discuss and nominate`;
+                    })()
                 }
               </div>
             </div>

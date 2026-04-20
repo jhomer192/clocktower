@@ -216,7 +216,7 @@ export function DayPanel({
   const handleProceedToNight = () => {
     // Log full day summary before transitioning
     if (nominations.length > 0) {
-      const nomSummaries = nominations.map((nom, idx) => {
+      const nomSummaries = nominations.map((nom) => {
         const nominator = players.find(p => p.id === nom.nominatorId);
         const nominee = players.find(p => p.id === nom.nomineeId);
         const voterNames = nom.votes.map(vid => players.find(p => p.id === vid)?.name || '?');
@@ -241,8 +241,6 @@ export function DayPanel({
 
   return (
     <div className="p-4 pb-32 space-y-4">
-      <h2 className="text-xl font-bold text-fg-bright">Day {dayNumber}</h2>
-
       {/* Active effects summary - so ST can see state at a glance */}
       {(() => {
         const effects: { name: string; badge: string; color: string }[] = [];
@@ -562,7 +560,6 @@ export function DayPanel({
         // Empath (TB) - how many alive neighbors are evil?
         if (rolesInPlay.has('empath')) {
           const emp = rolesInPlay.get('empath')!;
-          const empIdx = players.findIndex(p => p.id === emp.id);
           const alivePlayers = players.filter(p => p.alive);
           const empAliveIdx = alivePlayers.findIndex(p => p.id === emp.id);
           if (empAliveIdx >= 0 && alivePlayers.length > 1) {
