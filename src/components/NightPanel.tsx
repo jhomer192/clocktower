@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { Player, Role } from '../types/game';
+import type { Player, Role, Nomination } from '../types/game';
 import { getRoleById, getRolesForScript } from '../data/roles';
 
 interface NightPanelProps {
@@ -8,6 +8,7 @@ interface NightPanelProps {
   dayNumber: number;
   scriptId: string;
   customRoles: Role[];
+  previousDayNominations: Nomination[];
   onUpdatePlayer: (id: string, changes: Partial<Player>) => void;
   onAddLogEntry: (phase: string, text: string) => void;
   onStartDay: () => void;
@@ -25,6 +26,7 @@ export function NightPanel({
   dayNumber,
   scriptId,
   customRoles,
+  previousDayNominations,
   onUpdatePlayer,
   onAddLogEntry,
   onStartDay,
@@ -1037,29 +1039,50 @@ export function NightPanel({
         );
 
       // === DREAMER (S&V): choose player, learn 1 good + 1 evil character ===
-      case 'dreamer':
+      case 'dreamer': {
+        const dreamerPoisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
+        const chosenId = (actionNotes[key] || '').match(/^id:([^|]+)/)?.[1];
+        const chosen = chosenId ? players.find(p => p.id === chosenId) : null;
+        const chosenRole = chosen ? getRoleById(chosen.role || '', customRoles) : null;
+
+        // Pick a plausible decoy from the opposite team, prefer roles not in play
+        const decoy = (() => {
+          if (!chosenRole) return null;
+          const oppositeTeam: 'good' | 'evil' = chosenRole.team === 'good' ? 'evil' : 'good';
+          const scriptRoles = getRolesForScript(scriptId, customRoles);
+          const inPlayRoleIds = new Set(players.map(p => p.role).filter(Boolean));
+          const candidates = scriptRoles.filter(r => r.team === oppositeTeam);
+          const notInPlay = candidates.filter(r => !inPlayRoleIds.has(r.id));
+          const pool = notInPlay.length > 0 ? notInPlay : candidates;
+          return pool[Math.floor(pool.length / 2)] ?? null;
+        })();
+
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">They choose a player. Show them 1 good and 1 evil character (1 is correct):</div>
             <div className="flex flex-wrap gap-1.5">
               {players.filter(p => p.alive && p.id !== step.player.id).map(p => {
-                const role = getRoleById(p.role || '', customRoles);
+                const selected = chosenId === p.id;
                 return (
-                  <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name} (${role?.name || '?'})` }))}
+                  <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `id:${p.id}|chose ${p.name}` }))}
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      (actionNotes[key] || '').includes(p.name) ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
+                      selected ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
                     }`}>{p.name}</button>
                 );
               })}
             </div>
-            {actionNotes[key] && (
-              <div className={`text-xs ${(step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id)) ? 'text-orange' : 'text-accent'}`}>
-                Their actual role is noted. Show 1 good + 1 evil character (1 correct).
-                {(step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id)) ? ' POISONED -- neither character should be correct!' : ''}
+            {chosen && chosenRole && decoy && (
+              <div className={`text-xs font-semibold ${dreamerPoisoned ? 'text-orange' : 'text-accent'}`}>
+                {dreamerPoisoned ? (
+                  <>Tell them: {chosen.name} is <u>either</u> an evil {decoy.team === 'evil' ? decoy.name : 'Minion'} <u>or</u> a good Villager (POISONED -- pick any pair that's wrong)</>
+                ) : (
+                  <>Tell them: {chosen.name} is <u>either</u> {chosenRole.team === 'good' ? 'the ' + chosenRole.name : 'a ' + decoy.name} <u>or</u> {chosenRole.team === 'evil' ? 'the ' + chosenRole.name : 'a ' + decoy.name}</>
+                )}
               </div>
             )}
           </div>
         );
+      }
 
       // === SNAKE CHARMER (S&V): choose player ===
       case 'snake_charmer':
@@ -1118,36 +1141,55 @@ export function NightPanel({
         );
       }
 
-      // === FLOWERGIRL (S&V): auto-computed in storyteller notes, but show here too ===
+      // === FLOWERGIRL (S&V): did a Demon vote today? ===
       case 'flowergirl': {
-        const demonPlayer = players.find(p => {
-          const r = getRoleById(p.role || '', customRoles);
-          return r?.type === 'demon' && p.alive;
-        });
+        const demonIds = new Set(
+          players.filter(p => getRoleById(p.role || '', customRoles)?.type === 'demon').map(p => p.id)
+        );
+        // A "vote" = voter's id appears in a nomination's votes[] array
+        const demonVoted = previousDayNominations.some(n =>
+          (n.votes || []).some(voterId => demonIds.has(voterId))
+        );
         const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
+        const trueAnswer = demonVoted ? 'YES' : 'NO';
+        const shownAnswer = poisoned ? (demonVoted ? 'NO' : 'YES') : trueAnswer;
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
             <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
-              {demonPlayer ? `The Demon is ${demonPlayer.name}. Check if they voted today.` : 'No demon found.'}
-              {poisoned ? ' (poisoned -- give opposite answer)' : ''}
+              Tell them: A Demon {shownAnswer === 'YES' ? 'DID' : 'did NOT'} vote today
+              {poisoned ? ' (poisoned -- giving false answer)' : ''}
             </div>
-            <div className="text-xs text-fg-dim">This is also auto-computed in Storyteller Notes during the day.</div>
+            <div className="text-xs text-fg-dim">
+              Truth: {previousDayNominations.length === 0
+                ? 'no nominations today'
+                : `${previousDayNominations.length} nomination${previousDayNominations.length !== 1 ? 's' : ''}, demon voted = ${trueAnswer}`}
+            </div>
           </div>
         );
       }
 
-      // === TOWN CRIER (S&V): auto-computed ===
+      // === TOWN CRIER (S&V): did a Minion nominate today? ===
       case 'town_crier': {
+        const minionIds = new Set(
+          players.filter(p => getRoleById(p.role || '', customRoles)?.type === 'minion').map(p => p.id)
+        );
+        const minionNominated = previousDayNominations.some(n => minionIds.has(n.nominatorId));
         const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
+        const trueAnswer = minionNominated ? 'YES' : 'NO';
+        const shownAnswer = poisoned ? (minionNominated ? 'NO' : 'YES') : trueAnswer;
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
             <div className={`text-sm font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>
-              Check if any Minion nominated today.
-              {poisoned ? ' (poisoned -- give opposite answer)' : ''}
+              Tell them: A Minion {shownAnswer === 'YES' ? 'DID' : 'did NOT'} nominate today
+              {poisoned ? ' (poisoned -- giving false answer)' : ''}
             </div>
-            <div className="text-xs text-fg-dim">This is also auto-computed in Storyteller Notes during the day.</div>
+            <div className="text-xs text-fg-dim">
+              Truth: {previousDayNominations.length === 0
+                ? 'no nominations today'
+                : `${previousDayNominations.length} nomination${previousDayNominations.length !== 1 ? 's' : ''}, minion nominated = ${trueAnswer}`}
+            </div>
           </div>
         );
       }

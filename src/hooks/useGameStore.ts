@@ -208,7 +208,9 @@ export function useGameStore() {
         dayNumber: nextNight,
         isFirstNight: false,
         nightActions: [],
-        nominations: [],
+        // Keep nominations from the just-completed day so night info roles
+        // like Flowergirl (demon voted?) and Town Crier (minion nominated?)
+        // can inspect them. `startDay` clears them when the next day begins.
         currentTab: 'game',
         players: prev.players.map(p => {
           // Clear "until dusk" effects and "until night X" effects
