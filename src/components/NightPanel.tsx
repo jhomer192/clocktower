@@ -825,107 +825,90 @@ export function NightPanel({
         );
 
       // === INFO ROLES: pick players + show what to tell them ===
-      case 'washerwoman': {
-        const townsfolk = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'townsfolk' && p.id !== step.player.id);
-        return (
-          <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a Townsfolk). Not yourself.</div>
-            <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.id !== step.player.id).map(p => {
-                const selected = (actionNotes[key] || '').includes(p.name);
-                const role = getRoleById(p.role || '', customRoles);
-                const isTF = role?.type === 'townsfolk';
-                return (
-                  <button key={p.id} onClick={() => {
-                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
-                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
-                    else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
-                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selected ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
-                  }`}>{p.name}{isTF ? ' (TF)' : ''}</button>
-                );
-              })}
-            </div>
-            {(() => {
-              const names = (actionNotes[key] || '').split(', ').filter(Boolean);
-              if (names.length === 2) {
-                const tfPlayer = names.map(n => players.find(pl => pl.name === n)).find(pl => pl && getRoleById(pl.role || '', customRoles)?.type === 'townsfolk');
-                const roleName = tfPlayer ? getRoleById(tfPlayer.role || '', customRoles)?.name : null;
-                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
-                return <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : 'text-accent'}`}>Tell them: one of [{names.join(', ')}] is the {poisoned ? '[give wrong role]' : (roleName || '[no TF selected]')}{poisoned ? ' (poisoned)' : ''}</div>;
-              }
-              return null;
-            })()}
-          </div>
-        );
-      }
-
-      case 'librarian': {
-        const outsiders = players.filter(p => p.role && getRoleById(p.role, customRoles)?.type === 'outsider' && p.id !== step.player.id);
-        return (
-          <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be an Outsider). Not yourself.</div>
-            <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.id !== step.player.id).map(p => {
-                const role = getRoleById(p.role || '', customRoles);
-                const isOS = role?.type === 'outsider';
-                const selected = (actionNotes[key] || '').includes(p.name);
-                return (
-                  <button key={p.id} onClick={() => {
-                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
-                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
-                    else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
-                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selected ? 'bg-cyan-600 text-bg' : 'bg-surface2 text-fg hover:bg-cyan-600/20'
-                  }`}>{p.name}{isOS ? ' (OS)' : ''}</button>
-                );
-              })}
-            </div>
-            {outsiders.length === 0 && <div className="text-xs text-cyan-400">No Outsiders in play -- tell them zero</div>}
-            {(() => {
-              const names = (actionNotes[key] || '').split(', ').filter(Boolean);
-              if (names.length === 2) {
-                const osPlayer = names.map(n => players.find(pl => pl.name === n)).find(pl => pl && getRoleById(pl.role || '', customRoles)?.type === 'outsider');
-                const roleName = osPlayer ? getRoleById(osPlayer.role || '', customRoles)?.name : null;
-                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
-                return <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : 'text-cyan-400'}`}>Tell them: one of [{names.join(', ')}] is the {poisoned ? '[give wrong role]' : (roleName || '[no OS selected]')}{poisoned ? ' (poisoned)' : ''}</div>;
-              }
-              return null;
-            })()}
-          </div>
-        );
-      }
-
+      case 'washerwoman':
+      case 'librarian':
       case 'investigator': {
+        const targetType = step.role.id === 'washerwoman' ? 'townsfolk' : step.role.id === 'librarian' ? 'outsider' : 'minion';
+        const typeLabel = targetType.charAt(0).toUpperCase() + targetType.slice(1);
+        const accentColor = step.role.id === 'washerwoman' ? 'accent' : step.role.id === 'librarian' ? 'cyan-400' : 'orange';
+        const targets = players.filter(p => p.id !== step.player.id && p.role && getRoleById(p.role, customRoles)?.type === targetType);
+        const allRolesOfType = getRolesForScript(scriptId, customRoles).filter(r => r.type === targetType);
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+
+        // Track selected player IDs instead of names (avoids substring issues)
+        const selectedIds: string[] = [];
+        const noteMatch = (actionNotes[key] || '').match(/^players:(.+?)(?:\|role:(.+))?$/);
+        if (noteMatch) {
+          selectedIds.push(...noteMatch[1].split(','));
+        }
+        const selectedRole = noteMatch?.[2] || '';
+
+        const updateNote = (ids: string[], role: string) => {
+          const playerNames = ids.map(id => players.find(p => p.id === id)?.name || '?').join(', ');
+          setActionNotes(prev => ({ ...prev, [key]: `players:${ids.join(',')}|role:${role}` }));
+        };
+
+        // Auto-detect the correct role from selected players
+        const autoRole = (() => {
+          for (const id of selectedIds) {
+            const p = players.find(pl => pl.id === id);
+            if (p) {
+              const r = getRoleById(p.role || '', customRoles);
+              if (r?.type === targetType) return r.name;
+            }
+          }
+          return '';
+        })();
+
+        const displayRole = selectedRole || autoRole;
+
         return (
           <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a Minion). Not yourself.</div>
+            <div className="text-xs text-fg-dim">Pick 2 players to show (1 must be a {typeLabel}). Not yourself.</div>
+            {targetType === 'outsider' && targets.length === 0 && (
+              <div className="text-xs text-cyan-400 font-semibold">No Outsiders in play -- tell them zero.</div>
+            )}
             <div className="flex flex-wrap gap-1.5">
               {players.filter(p => p.id !== step.player.id).map(p => {
+                const selected = selectedIds.includes(p.id);
                 const role = getRoleById(p.role || '', customRoles);
-                const isMN = role?.type === 'minion';
-                const selected = (actionNotes[key] || '').includes(p.name);
+                const isTarget = role?.type === targetType;
                 return (
                   <button key={p.id} onClick={() => {
-                    const names = (actionNotes[key] || '').split(', ').filter(Boolean);
-                    if (selected) setActionNotes(prev => ({ ...prev, [key]: names.filter(n => n !== p.name).join(', ') }));
-                    else if (names.length < 2) setActionNotes(prev => ({ ...prev, [key]: [...names, p.name].join(', ') }));
-                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selected ? 'bg-orange text-bg' : 'bg-surface2 text-fg hover:bg-orange-dim'
-                  }`}>{p.name}{isMN ? ' (MN)' : ''}</button>
+                    let next: string[];
+                    if (selected) {
+                      next = selectedIds.filter(id => id !== p.id);
+                    } else if (selectedIds.length < 2) {
+                      next = [...selectedIds, p.id];
+                    } else {
+                      return; // already 2 selected
+                    }
+                    updateNote(next, selectedRole);
+                  }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ring-2 ${
+                    selected ? `bg-${accentColor}/20 text-${accentColor} ring-${accentColor}` : `bg-surface2 text-fg ring-transparent hover:ring-${accentColor}/30`
+                  }`}>{selected ? '\u2713 ' : ''}{p.name}{isTarget ? ` (${targetType.slice(0,2).toUpperCase()})` : ''}{playerBadges(p)}</button>
                 );
               })}
             </div>
-            {(() => {
-              const names = (actionNotes[key] || '').split(', ').filter(Boolean);
-              if (names.length === 2) {
-                const mnPlayer = names.map(n => players.find(pl => pl.name === n)).find(pl => pl && getRoleById(pl.role || '', customRoles)?.type === 'minion');
-                const roleName = mnPlayer ? getRoleById(mnPlayer.role || '', customRoles)?.name : null;
-                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
-                return <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : 'text-orange'}`}>Tell them: one of [{names.join(', ')}] is the {poisoned ? '[give wrong role]' : (roleName || '[no MN selected]')}{poisoned ? ' (poisoned)' : ''}</div>;
-              }
-              return null;
-            })()}
+            {selectedIds.length === 2 && (
+              <div className="space-y-1.5">
+                <div className="text-xs text-fg-dim">Which {typeLabel} role to name:</div>
+                <select
+                  value={displayRole}
+                  onChange={e => updateNote(selectedIds, e.target.value)}
+                  className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-fg-bright focus:border-accent focus:outline-none"
+                >
+                  <option value="">Auto: {autoRole || `(pick a ${typeLabel})`}</option>
+                  {allRolesOfType.map(r => (
+                    <option key={r.id} value={r.name}>{r.name}{r.name === autoRole ? ' (true)' : ''}</option>
+                  ))}
+                </select>
+                <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : `text-${accentColor}`}`}>
+                  Tell them: one of [{selectedIds.map(id => players.find(p => p.id === id)?.name).join(', ')}] is the {displayRole || `[pick a ${typeLabel}]`}
+                  {poisoned ? ' (POISONED -- pick a wrong role above!)' : ''}
+                </div>
+              </div>
+            )}
           </div>
         );
       }
