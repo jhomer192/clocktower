@@ -239,22 +239,26 @@ export function NightPanel({
       case 'poisoner':
         return (
           <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Choose a player to poison (not yourself):</div>
+            <div className="text-xs text-fg-dim">Choose ONE player to poison (not yourself):</div>
             <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.alive && p.id !== step.player.id).map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    handlePoisonToggle(p.id);
-                    setActionNotes(prev => ({ ...prev, [key]: `Poisoned ${p.name}` }));
-                  }}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    pendingPoisons.has(p.id) ? 'bg-orange text-bg' : 'bg-surface2 text-fg hover:bg-orange-dim'
-                  }`}
-                >
-                  {p.name}{playerBadges(p)}
-                </button>
-              ))}
+              {players.filter(p => p.alive && p.id !== step.player.id).map(p => {
+                const selected = pendingPoisons.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      // Clear all previous, set only this one
+                      setPendingPoisons(new Set([p.id]));
+                      setActionNotes(prev => ({ ...prev, [key]: `Poisoned ${p.name}` }));
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ring-2 ${
+                      selected ? 'bg-orange/20 text-orange ring-orange' : 'bg-surface2 text-fg ring-transparent hover:ring-orange/30'
+                    }`}
+                  >
+                    {selected ? '\u2713 ' : ''}{p.name}{playerBadges(p)}
+                  </button>
+                );
+              })}
             </div>
           </div>
         );
@@ -266,20 +270,24 @@ export function NightPanel({
             <div className="text-xs text-fg-dim">Choose a player to protect (not yourself):</div>
             {monkPoisoned && <div className="text-xs text-orange font-semibold">POISONED -- protection will NOT work tonight!</div>}
             <div className="flex flex-wrap gap-1.5">
-              {alivePlayers.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    handleProtectToggle(p.id);
-                    setActionNotes(prev => ({ ...prev, [key]: `Protected ${p.name}` }));
-                  }}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    p.protected ? 'bg-green text-bg' : 'bg-surface2 text-fg hover:bg-green-dim'
-                  }`}
-                >
-                  {p.name} {p.protected ? '🛡' : ''}
-                </button>
-              ))}
+              {alivePlayers.map(p => {
+                const selected = pendingProtects.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      // Only one player protected at a time
+                      setPendingProtects(new Set([p.id]));
+                      setActionNotes(prev => ({ ...prev, [key]: `Protected ${p.name}` }));
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ring-2 ${
+                      selected ? 'bg-green/20 text-green ring-green' : 'bg-surface2 text-fg ring-transparent hover:ring-green/30'
+                    }`}
+                  >
+                    {selected ? '\u2713 ' : ''}{p.name}{playerBadges(p)}
+                  </button>
+                );
+              })}
             </div>
           </div>
         );
@@ -288,9 +296,11 @@ export function NightPanel({
       case 'imp':
         return (
           <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Choose a player to kill:</div>
+            <div className="text-xs text-fg-dim">Choose ONE player to kill:</div>
             <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.alive).map(p => (
+              {players.filter(p => p.alive).map(p => {
+                const selected = pendingKills.has(p.id);
+                return (
                 <button
                   key={p.id}
                   onClick={() => {
@@ -300,19 +310,20 @@ export function NightPanel({
                       onAddLogEntry(nightLabel, `${p.name} (Imp) killed themselves — a Minion becomes the Imp`);
                       setActionNotes(prev => ({ ...prev, [key]: `Killed self (starpass)` }));
                     } else {
-                      handleKill(p.id);
+                      setPendingKills(new Set([p.id]));
                       setActionNotes(prev => ({ ...prev, [key]: `Killed ${p.name}` }));
                     }
                   }}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ring-2 ${
                     p.id === step.player.id
-                      ? 'bg-surface2 text-red hover:bg-red-dim border border-red/30'
-                      : 'bg-surface2 text-fg hover:bg-red-dim'
+                      ? 'bg-surface2 text-red ring-red/30 hover:ring-red'
+                      : selected ? 'bg-red/20 text-red ring-red' : 'bg-surface2 text-fg ring-transparent hover:ring-red/30'
                   }`}
                 >
-                  {p.name} {p.id === step.player.id ? '(self)' : ''}
+                  {selected ? '\u2713 ' : ''}{p.name}{p.id === step.player.id ? ' (self)' : ''}{playerBadges(p)}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
@@ -347,25 +358,38 @@ export function NightPanel({
       case 'zombuul':
       case 'pukka':
       case 'shabaloth':
-      case 'po':
+      case 'po': {
+        // Shabaloth picks 2, Po picks 1 or 3, others pick 1
+        const maxKills = step.role.id === 'shabaloth' ? 2 : step.role.id === 'po' ? 3 : 1;
         return (
           <div className="space-y-2">
-            <div className="text-xs text-fg-dim">Choose a player to kill:</div>
+            <div className="text-xs text-fg-dim">Choose {maxKills > 1 ? `up to ${maxKills} players` : 'a player'} to kill:</div>
             <div className="flex flex-wrap gap-1.5">
-              {players.filter(p => p.alive).map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    handleKill(p.id);
-                    setActionNotes(prev => ({ ...prev, [key]: `Killed ${p.name}` }));
-                  }}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    pendingKills.has(p.id) ? 'bg-red text-bg' : 'bg-surface2 text-fg hover:bg-red-dim'
-                  }`}
-                >
-                  {p.name}
-                </button>
-              ))}
+              {players.filter(p => p.alive).map(p => {
+                const selected = pendingKills.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      if (maxKills === 1) {
+                        // Single target: clear and set
+                        setPendingKills(new Set([p.id]));
+                      } else {
+                        // Multi target: toggle
+                        handleKill(p.id);
+                      }
+                      const killNames = maxKills === 1 ? [p.name] : [...pendingKills].map(id => players.find(pl => pl.id === id)?.name).filter(Boolean);
+                      if (!selected) killNames.push(p.name);
+                      setActionNotes(prev => ({ ...prev, [key]: `Killed ${killNames.join(', ')}` }));
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ring-2 ${
+                      selected ? 'bg-red/20 text-red ring-red' : 'bg-surface2 text-fg ring-transparent hover:ring-red/30'
+                    }`}
+                  >
+                    {selected ? '\u2713 ' : ''}{p.name}{playerBadges(p)}
+                  </button>
+                );
+              })}
             </div>
             {step.role.id === 'po' && (
               <div className="text-xs text-fg-dim mt-1 italic">Po: if you chose no-one last night, choose up to 3 tonight</div>
@@ -375,6 +399,7 @@ export function NightPanel({
             )}
           </div>
         );
+      }
 
       // === WITCH (S&V): curse a player ===
       case 'witch':
