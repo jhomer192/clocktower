@@ -264,7 +264,7 @@ export function NightPanel({
         );
 
       case 'monk': {
-        const monkPoisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const monkPoisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">Choose a player to protect (not yourself):</div>
@@ -641,7 +641,7 @@ export function NightPanel({
                       const t1 = getRoleById(p1.role || '', customRoles)?.team;
                       const t2 = getRoleById(p2.role || '', customRoles)?.team;
                       const same = t1 === t2;
-                      const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                      const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
                       return (
                         <div className={`text-xs ${poisoned ? 'text-orange' : 'text-accent'}`}>
                           Tell them: {poisoned ? (same ? 'Different' : 'Same') : (same ? 'Same' : 'Different')} alignment
@@ -666,7 +666,7 @@ export function NightPanel({
             {executedToday ? (
               <div className="text-sm text-accent font-semibold">
                 Tell them: {getRoleById(executedToday.role || '', customRoles)?.name || 'Unknown'}
-                {(step.player.poisoned || step.player.drunkPoisoned) ? ' (poisoned -- give false info!)' : ''}
+                {(step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id)) ? ' (poisoned -- give false info!)' : ''}
               </div>
             ) : (
               <div className="text-xs text-fg-dim">No one was executed today.</div>
@@ -685,7 +685,7 @@ export function NightPanel({
                 const r = getRoleById(p.role || '', customRoles);
                 return (
                   <button key={p.id} onClick={() => {
-                    const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                    const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
                     setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name}: ${poisoned ? '[give false character]' : r?.name || '?'}` }));
                   }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     (actionNotes[key] || '').includes(p.name) ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
@@ -706,7 +706,7 @@ export function NightPanel({
           const next = getRoleById(aliveSorted[(i + 1) % aliveSorted.length].role || '', customRoles);
           if (curr?.team === 'evil' && next?.team === 'evil') pairs++;
         }
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
@@ -732,7 +732,7 @@ export function NightPanel({
             }
           }
         }
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
@@ -746,7 +746,7 @@ export function NightPanel({
 
       // === GRANDMOTHER (BMR): know a good player ===
       case 'grandmother': {
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         const goodPlayers = players.filter(p => p.alive && p.id !== step.player.id && getRoleById(p.role || '', customRoles)?.team === 'good');
         return (
           <div className="space-y-2">
@@ -798,7 +798,7 @@ export function NightPanel({
                   const r = getRoleById(p.role || '', customRoles);
                   return (r?.otherNights ?? 0) > 0;
                 }).length;
-                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
                 return <div className={`text-xs ${poisoned ? 'text-orange' : 'text-accent'}`}>Tell them: {poisoned ? (count === 0 ? 1 : 0) : count}{poisoned ? ' (poisoned)' : ''}</div>;
               }
               return null;
@@ -829,10 +829,21 @@ export function NightPanel({
       case 'investigator': {
         const targetType = step.role.id === 'washerwoman' ? 'townsfolk' : step.role.id === 'librarian' ? 'outsider' : 'minion';
         const typeLabel = targetType.charAt(0).toUpperCase() + targetType.slice(1);
-        const accentColor = step.role.id === 'washerwoman' ? 'accent' : step.role.id === 'librarian' ? 'cyan-400' : 'orange';
+        const selectedClass = step.role.id === 'washerwoman'
+          ? 'bg-emerald-500/20 text-emerald-400 ring-emerald-400'
+          : step.role.id === 'librarian'
+          ? 'bg-cyan-500/20 text-cyan-400 ring-cyan-400'
+          : 'bg-orange-500/20 text-orange-400 ring-orange-400';
+        const hoverClass = step.role.id === 'washerwoman'
+          ? 'hover:ring-emerald-400/30'
+          : step.role.id === 'librarian'
+          ? 'hover:ring-cyan-400/30'
+          : 'hover:ring-orange-400/30';
+        const textClass = step.role.id === 'washerwoman' ? 'text-emerald-400' : step.role.id === 'librarian' ? 'text-cyan-400' : 'text-orange-400';
         const targets = players.filter(p => p.id !== step.player.id && p.role && getRoleById(p.role, customRoles)?.type === targetType);
         const allRolesOfType = getRolesForScript(scriptId, customRoles).filter(r => r.type === targetType);
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        // Check both existing poison AND pending poison from this night (Poisoner acts first)
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id) || pendingPoisons.has(step.player.id);
 
         // Track selected player IDs instead of names (avoids substring issues)
         const selectedIds: string[] = [];
@@ -884,8 +895,8 @@ export function NightPanel({
                     }
                     updateNote(next, selectedRole);
                   }} className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ring-2 ${
-                    selected ? `bg-${accentColor}/20 text-${accentColor} ring-${accentColor}` : `bg-surface2 text-fg ring-transparent hover:ring-${accentColor}/30`
-                  }`}>{selected ? '\u2713 ' : ''}{p.name}{isTarget ? ` (${targetType.slice(0,2).toUpperCase()})` : ''}{playerBadges(p)}</button>
+                    selected ? selectedClass : `bg-surface2 text-fg ring-transparent ${hoverClass}`
+                  }`}>{selected ? '\u2713 ' : ''}{p.name}{isTarget ? ` (${targetType === 'townsfolk' ? 'TF' : targetType === 'outsider' ? 'OS' : 'MN'})` : ''}{playerBadges(p)}</button>
                 );
               })}
             </div>
@@ -902,7 +913,7 @@ export function NightPanel({
                     <option key={r.id} value={r.name}>{r.name}{r.name === autoRole ? ' (true)' : ''}</option>
                   ))}
                 </select>
-                <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : `text-${accentColor}`}`}>
+                <div className={`text-xs font-semibold ${poisoned ? 'text-orange' : textClass}`}>
                   Tell them: one of [{selectedIds.map(id => players.find(p => p.id === id)?.name).join(', ')}] is the {displayRole || `[pick a ${typeLabel}]`}
                   {poisoned ? ' (POISONED -- pick a wrong role above!)' : ''}
                 </div>
@@ -938,7 +949,7 @@ export function NightPanel({
                   const p = players.find(pl => pl.name === n);
                   return p && getRoleById(p.role || '', customRoles)?.type === 'demon';
                 });
-                const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+                const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
                 return (
                   <div className={`text-xs ${poisoned ? 'text-orange' : 'text-accent'}`}>
                     Tell them: {poisoned ? (hasDemon ? 'No' : 'Yes') : (hasDemon ? 'Yes' : 'No')}
@@ -963,7 +974,7 @@ export function NightPanel({
             if (n && n.id !== step.player.id && getRoleById(n.role || '', customRoles)?.team === 'evil') evilCount++;
           }
         }
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
@@ -977,7 +988,7 @@ export function NightPanel({
 
       // === INNKEEPER (BMR): protect 2 players, 1 is drunk ===
       case 'innkeeper': {
-        const innPoisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const innPoisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">Choose 2 players to protect (1 will be drunk until dusk):</div>
@@ -1005,7 +1016,7 @@ export function NightPanel({
 
       // === SAILOR (BMR): choose player, one of you is drunk ===
       case 'sailor': {
-        const sailorPoisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const sailorPoisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">Choose a player. Either you or they are drunk until dusk:</div>
@@ -1055,9 +1066,9 @@ export function NightPanel({
               })}
             </div>
             {actionNotes[key] && (
-              <div className={`text-xs ${(step.player.poisoned || step.player.drunkPoisoned) ? 'text-orange' : 'text-accent'}`}>
+              <div className={`text-xs ${(step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id)) ? 'text-orange' : 'text-accent'}`}>
                 Their actual role is noted. Show 1 good + 1 evil character (1 correct).
-                {(step.player.poisoned || step.player.drunkPoisoned) ? ' POISONED -- neither character should be correct!' : ''}
+                {(step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id)) ? ' POISONED -- neither character should be correct!' : ''}
               </div>
             )}
           </div>
@@ -1107,7 +1118,7 @@ export function NightPanel({
       case 'mathematician': {
         // Count poisoned/drunk players who used abilities today
         const malfunctions = players.filter(p => p.alive && (p.poisoned || p.drunkPoisoned) && p.role).length;
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
@@ -1126,7 +1137,7 @@ export function NightPanel({
           const r = getRoleById(p.role || '', customRoles);
           return r?.type === 'demon' && p.alive;
         });
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
@@ -1141,7 +1152,7 @@ export function NightPanel({
 
       // === TOWN CRIER (S&V): auto-computed ===
       case 'town_crier': {
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
@@ -1157,7 +1168,7 @@ export function NightPanel({
       // === ORACLE (S&V): count dead evil ===
       case 'oracle': {
         const deadEvil = players.filter(p => !p.alive && getRoleById(p.role || '', customRoles)?.team === 'evil').length;
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
@@ -1171,7 +1182,7 @@ export function NightPanel({
 
       // === JUGGLER (S&V): how many correct guesses ===
       case 'juggler': {
-        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned || pendingPoisons.has(step.player.id);
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">{step.role.ability}</div>
