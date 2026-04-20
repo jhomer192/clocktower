@@ -445,7 +445,7 @@ export function DayPanel({
                   >
                     <option value="">Who is being nominated?</option>
                     {canBeNominated.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}{p.role === 'virgin' && !p.usedAbility ? ' (VIRGIN!)' : ''}{p.cursed ? ' (CURSED!)' : ''}</option>
+                      <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
                 </>
@@ -588,6 +588,39 @@ export function DayPanel({
             icon: '\u2694\uFE0F',
             text: `${pendingPlayers.map(p => p.name).join(', ')} will die at dusk`,
             color: 'text-red',
+          });
+        }
+
+        // Virgin warning (ST-only)
+        const virgin = players.find(p => p.alive && p.role === 'virgin' && !p.usedAbility);
+        if (virgin) {
+          notes.push({
+            role: 'Virgin',
+            icon: '\uD83D\uDC7C',
+            text: `${virgin.name} is the Virgin. If a Townsfolk nominates them, the nominator dies.`,
+            color: 'text-yellow',
+          });
+        }
+
+        // Witch curse warning (ST-only)
+        const cursedPlayers = players.filter(p => p.alive && p.cursed);
+        for (const cp of cursedPlayers) {
+          notes.push({
+            role: 'Witch Curse',
+            icon: '\uD83E\uDDD9',
+            text: `${cp.name} is CURSED. If nominated, they die immediately.`,
+            color: 'text-purple-400',
+          });
+        }
+
+        // Devil's Advocate protection (ST-only)
+        const daProtected = players.find(p => p.alive && p.devilProtected);
+        if (daProtected) {
+          notes.push({
+            role: "Devil's Advocate",
+            icon: '\uD83D\uDE08',
+            text: `${daProtected.name} is protected. If executed today, they survive.`,
+            color: 'text-orange',
           });
         }
 
