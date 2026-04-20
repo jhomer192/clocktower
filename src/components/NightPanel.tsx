@@ -305,10 +305,9 @@ export function NightPanel({
                   key={p.id}
                   onClick={() => {
                     if (p.id === step.player.id) {
-                      // Imp starpass
-                      onUpdatePlayer(p.id, { alive: false });
-                      onAddLogEntry(nightLabel, `${p.name} (Imp) killed themselves — a Minion becomes the Imp`);
-                      setActionNotes(prev => ({ ...prev, [key]: `Killed self (starpass)` }));
+                      // Imp starpass - pending like all other kills
+                      setPendingKills(new Set([p.id]));
+                      setActionNotes(prev => ({ ...prev, [key]: `Killed self (starpass) — a Minion becomes the Imp` }));
                     } else {
                       setPendingKills(new Set([p.id]));
                       setActionNotes(prev => ({ ...prev, [key]: `Killed ${p.name}` }));
