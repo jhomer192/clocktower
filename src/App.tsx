@@ -188,6 +188,7 @@ function App() {
                 onUpdatePlayer={store.updatePlayer}
                 onAddNomination={store.addNomination}
                 onUpdateNomination={store.updateNomination}
+                onRemoveNomination={store.removeNomination}
                 onAddLogEntry={store.addLogEntry}
                 onAdvanceToNextNight={store.advanceToNextNight}
                 onUpdate={store.update}

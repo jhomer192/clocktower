@@ -11,6 +11,7 @@ interface DayPanelProps {
   onUpdatePlayer: (id: string, changes: Partial<Player>) => void;
   onAddNomination: (nom: Nomination) => void;
   onUpdateNomination: (index: number, changes: Partial<Nomination>) => void;
+  onRemoveNomination: (index: number) => void;
   onAddLogEntry: (phase: string, text: string) => void;
   onAdvanceToNextNight: () => void;
   onUpdate: (changes: { timerDuration: number }) => void;
@@ -33,6 +34,7 @@ export function DayPanel({
   onUpdatePlayer,
   onAddNomination,
   onUpdateNomination,
+  onRemoveNomination,
   onAddLogEntry,
   onAdvanceToNextNight,
   onUpdate,
@@ -361,6 +363,26 @@ export function DayPanel({
                         <span className="text-[10px] text-fg-dim">({deadVotes} 👻)</span>
                       ) : null;
                     })()}
+                    {!nom.executed && (
+                      <button
+                        onClick={() => {
+                          if (!confirm(`Remove nomination: ${nominatorP?.name} → ${nomineeP?.name}?`)) return;
+                          // Undo any ghost votes that were cast
+                          for (const vid of nom.votes) {
+                            const voter = players.find(p => p.id === vid);
+                            if (voter && !voter.alive) {
+                              onUpdatePlayer(vid, { ghostVoteUsed: false });
+                            }
+                          }
+                          onRemoveNomination(idx);
+                          onAddLogEntry(dayLabel, `Nomination removed: ${nominatorP?.name} → ${nomineeP?.name}`);
+                          if (votingIndex === idx) setVotingIndex(null);
+                        }}
+                        className="text-xs px-2 py-1 rounded bg-surface2 text-red/60 hover:text-red"
+                      >
+                        ×
+                      </button>
+                    )}
                     {!nom.executed && (
                       <button
                         onClick={() => setVotingIndex(isVoting ? null : idx)}

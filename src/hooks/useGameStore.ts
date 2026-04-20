@@ -262,6 +262,13 @@ export function useGameStore() {
     }));
   }, []);
 
+  const removeNomination = useCallback((index: number) => {
+    setState(prev => ({
+      ...prev,
+      nominations: prev.nominations.filter((_, i) => i !== index),
+    }));
+  }, []);
+
   // Custom roles
   const addCustomRole = useCallback((role: Role) => {
     setState(prev => ({
@@ -327,6 +334,7 @@ export function useGameStore() {
     addNightAction,
     addNomination,
     updateNomination,
+    removeNomination,
     addCustomRole,
     removeCustomRole,
     setCustomRoles,
