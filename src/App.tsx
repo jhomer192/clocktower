@@ -242,6 +242,7 @@ function App() {
                 dayNumber={state.dayNumber}
                 scriptId={state.scriptId}
                 customRoles={state.customRoles}
+                previousDayNominations={state.nominations}
                 onUpdatePlayer={store.updatePlayer}
                 onAddLogEntry={store.addLogEntry}
                 onStartDay={store.startDay}
