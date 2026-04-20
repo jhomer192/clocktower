@@ -133,17 +133,35 @@ export function NightPanel({
     for (const id of pendingKills) {
       const p = players.find(pl => pl.id === id);
       if (!p) continue;
+
+      // Check Monk/Innkeeper protection -- but only if the protector isn't poisoned
       if (pendingProtects.has(id)) {
-        onAddLogEntry(nightLabel, `${p.name} was attacked but protected by the Monk`);
-        continue;
+        const protectorPoisoned = players.some(pl =>
+          (pl.role === 'monk' || pl.role === 'innkeeper') && pl.alive && (pl.poisoned || pl.drunkPoisoned)
+        );
+        if (!protectorPoisoned) {
+          onAddLogEntry(nightLabel, `${p.name} was attacked but protected`);
+          continue;
+        } else {
+          onAddLogEntry(nightLabel, `${p.name} was "protected" but protector is poisoned -- protection fails!`);
+        }
       }
+
+      // Soldier: safe from Demon unless poisoned
       const role = getRoleById(p.role || '', customRoles);
-      if (role?.id === 'soldier' && !pendingPoisons.has(id) && !p.poisoned) {
+      if (role?.id === 'soldier' && !pendingPoisons.has(id) && !p.poisoned && !p.drunkPoisoned) {
         onAddLogEntry(nightLabel, `${p.name} (Soldier) was attacked but is safe from the Demon`);
         continue;
       }
+
+      // Sailor: can't die unless poisoned
+      if (role?.id === 'sailor' && !p.poisoned && !p.drunkPoisoned) {
+        onAddLogEntry(nightLabel, `${p.name} (Sailor) was attacked but can't die`);
+        continue;
+      }
+
       onUpdatePlayer(id, { alive: false });
-      onAddLogEntry(nightLabel, `${p.name} was killed by the Demon`);
+      onAddLogEntry(nightLabel, `${p.name} was killed`);
     }
     // Log night summary with all role actions
     const summaryLines: string[] = [];
@@ -241,10 +259,12 @@ export function NightPanel({
           </div>
         );
 
-      case 'monk':
+      case 'monk': {
+        const monkPoisoned = step.player.poisoned || step.player.drunkPoisoned;
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">Choose a player to protect (not yourself):</div>
+            {monkPoisoned && <div className="text-xs text-orange font-semibold">POISONED -- protection will NOT work tonight!</div>}
             <div className="flex flex-wrap gap-1.5">
               {alivePlayers.map(p => (
                 <button
@@ -263,6 +283,7 @@ export function NightPanel({
             </div>
           </div>
         );
+      }
 
       case 'imp':
         return (
@@ -701,22 +722,24 @@ export function NightPanel({
 
       // === GRANDMOTHER (BMR): know a good player ===
       case 'grandmother': {
+        const poisoned = step.player.poisoned || step.player.drunkPoisoned;
         const goodPlayers = players.filter(p => p.alive && p.id !== step.player.id && getRoleById(p.role || '', customRoles)?.team === 'good');
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">Pick a good player to reveal to the Grandmother (if Demon kills them, Grandmother dies too):</div>
+            {poisoned && <div className="text-xs text-orange font-semibold">POISONED -- show wrong player/character. Grandmother link won't trigger death.</div>}
             <div className="flex flex-wrap gap-1.5">
               {goodPlayers.map(p => {
                 const r = getRoleById(p.role || '', customRoles);
                 return (
-                  <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Told: ${p.name} is the ${r?.name}` }))}
+                  <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Told: ${p.name} is the ${r?.name}${poisoned ? ' (POISONED - give wrong info)' : ''}` }))}
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       (actionNotes[key] || '').includes(p.name) ? 'bg-accent text-bg' : 'bg-surface2 text-fg hover:bg-accent-dim'
                     }`}>{p.name} ({r?.name})</button>
                 );
               })}
             </div>
-            {actionNotes[key] && <div className="text-xs text-accent">{actionNotes[key]}</div>}
+            {actionNotes[key] && <div className={`text-xs ${poisoned ? 'text-orange' : 'text-accent'}`}>{actionNotes[key]}</div>}
           </div>
         );
       }
@@ -946,10 +969,12 @@ export function NightPanel({
       }
 
       // === INNKEEPER (BMR): protect 2 players, 1 is drunk ===
-      case 'innkeeper':
+      case 'innkeeper': {
+        const innPoisoned = step.player.poisoned || step.player.drunkPoisoned;
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">Choose 2 players to protect (1 will be drunk until dusk):</div>
+            {innPoisoned && <div className="text-xs text-orange font-semibold">POISONED -- protection will NOT work, but one is still drunk!</div>}
             <div className="flex flex-wrap gap-1.5">
               {alivePlayers.map(p => {
                 const selected = (actionNotes[key] || '').includes(p.name);
@@ -969,12 +994,15 @@ export function NightPanel({
             </div>
           </div>
         );
+      }
 
       // === SAILOR (BMR): choose player, one of you is drunk ===
-      case 'sailor':
+      case 'sailor': {
+        const sailorPoisoned = step.player.poisoned || step.player.drunkPoisoned;
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">Choose a player. Either you or they are drunk until dusk:</div>
+            {sailorPoisoned && <div className="text-xs text-orange font-semibold">POISONED -- Sailor CAN die tonight! "Can't die" doesn't apply.</div>}
             <div className="flex flex-wrap gap-1.5">
               {players.filter(p => p.alive).map(p => (
                 <button key={p.id} onClick={() => setActionNotes(prev => ({ ...prev, [key]: `Chose ${p.name}` }))}
@@ -985,6 +1013,7 @@ export function NightPanel({
             </div>
           </div>
         );
+      }
 
       // === EXORCIST (BMR): choose player (demon doesn't wake if chosen) ===
       case 'exorcist':
@@ -1018,7 +1047,12 @@ export function NightPanel({
                 );
               })}
             </div>
-            {actionNotes[key] && <div className="text-xs text-accent">Their actual role is noted. Show 1 good + 1 evil character.</div>}
+            {actionNotes[key] && (
+              <div className={`text-xs ${(step.player.poisoned || step.player.drunkPoisoned) ? 'text-orange' : 'text-accent'}`}>
+                Their actual role is noted. Show 1 good + 1 evil character (1 correct).
+                {(step.player.poisoned || step.player.drunkPoisoned) ? ' POISONED -- neither character should be correct!' : ''}
+              </div>
+            )}
           </div>
         );
 
