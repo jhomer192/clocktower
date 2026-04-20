@@ -81,16 +81,6 @@ export function NightPanel({
 
   const stepKey = (step: NightStep) => `${step.role.id}-${step.player.id}`;
 
-  const handlePoisonToggle = (playerId: string) => {
-    const player = players.find(p => p.id === playerId);
-    if (!player) return;
-    setPendingPoisons(prev => {
-      const next = new Set(prev);
-      if (next.has(playerId)) next.delete(playerId);
-      else next.add(playerId);
-      return next;
-    });
-  };
 
   const handleProtectToggle = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
@@ -854,7 +844,6 @@ export function NightPanel({
         const selectedRole = noteMatch?.[2] || '';
 
         const updateNote = (ids: string[], role: string) => {
-          const playerNames = ids.map(id => players.find(p => p.id === id)?.name || '?').join(', ');
           setActionNotes(prev => ({ ...prev, [key]: `players:${ids.join(',')}|role:${role}` }));
         };
 
@@ -930,7 +919,6 @@ export function NightPanel({
             <div className="flex flex-wrap gap-1.5">
               {players.map(p => {
                 const selected = (actionNotes[key] || '').includes(p.name);
-                const isDemon = getRoleById(p.role || '', customRoles)?.type === 'demon';
                 return (
                   <button key={p.id} onClick={() => {
                     const names = (actionNotes[key] || '').split(', ').filter(Boolean);
@@ -963,7 +951,6 @@ export function NightPanel({
         );
 
       case 'empath': {
-        const empIdx = players.findIndex(p => p.id === step.player.id);
         const alive = players.filter(p => p.alive);
         const empAlive = alive.findIndex(p => p.id === step.player.id);
         let evilCount = 0;
@@ -1247,7 +1234,6 @@ export function NightPanel({
 
       // === CERENOVUS (S&V): make someone mad ===
       case 'cerenovus': {
-        const goodRoles = getRolesForScript(scriptId, customRoles).filter(r => r.team === 'good');
         return (
           <div className="space-y-2">
             <div className="text-xs text-fg-dim">Choose a player and a good character. They must be "mad" they are that character tomorrow or be executed.</div>
@@ -1319,8 +1305,7 @@ export function NightPanel({
 
   return (
     <div className="p-4 pb-32 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-fg-bright">{nightLabel}</h2>
+      <div className="flex items-center justify-end">
         <span className="text-sm text-fg-dim">
           {completedSteps.size}/{steps.length} done
         </span>

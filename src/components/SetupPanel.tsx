@@ -130,7 +130,14 @@ export function SetupPanel({
         <label className="block text-sm text-fg-dim mb-2">Script</label>
         <select
           value={scriptId}
-          onChange={e => onSetScript(e.target.value)}
+          onChange={e => {
+            const newScript = e.target.value;
+            const hasRoles = players.some(p => p.role);
+            if (hasRoles && !confirm('Switching scripts will clear all role assignments. Continue?')) {
+              return;
+            }
+            onSetScript(newScript);
+          }}
           className="w-full bg-bg border border-border rounded-lg px-3 py-3 text-fg-bright font-medium focus:border-accent focus:outline-none"
         >
           <option value="trouble_brewing">Trouble Brewing</option>
