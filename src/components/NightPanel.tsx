@@ -20,6 +20,12 @@ interface NightStep {
   player: Player;
 }
 
+// Strip internal ID prefixes like "id:abc123|chose Alice" → "chose Alice"
+function sanitizeNote(note: string | undefined): string {
+  if (!note) return '';
+  return note.replace(/^id:[^|]+\|/, '');
+}
+
 export function NightPanel({
   players,
   isFirstNight,
@@ -160,7 +166,7 @@ export function NightPanel({
     for (const step of steps) {
       const key = stepKey(step);
       if (completedSteps.has(key)) {
-        const note = actionNotes[key];
+        const note = sanitizeNote(actionNotes[key]);
         summaryLines.push(`${step.player.name} (${step.role.name})${note ? `: ${note}` : ''}`);
       }
     }
@@ -198,8 +204,9 @@ export function NightPanel({
 
     setCompletedSteps(prev => new Set([...prev, key]));
 
+    const cleanNote = sanitizeNote(note);
     let logText = `${step.player.name} (${step.role.name})`;
-    if (note) logText += `: ${note}`;
+    if (cleanNote) logText += `: ${cleanNote}`;
     else logText += ': No action taken';
     onAddLogEntry(nightLabel, logText);
   };
