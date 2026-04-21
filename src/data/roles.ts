@@ -222,7 +222,7 @@ export const SECTS_AND_VIOLETS_ROLES: Role[] = [
     type: 'townsfolk',
     team: 'good',
     ability: 'Each night, choose a player (not yourself): you learn 1 good and 1 evil character, 1 of which is correct.',
-    firstNight: 0,
+    firstNight: 8,
     otherNights: 3,
   },
   {
@@ -231,7 +231,7 @@ export const SECTS_AND_VIOLETS_ROLES: Role[] = [
     type: 'townsfolk',
     team: 'good',
     ability: 'Each night, choose an alive player: a) If they are the Demon, you swap characters and alignments, then they are poisoned and you are healthy. b) Otherwise you are poisoned.',
-    firstNight: 0,
+    firstNight: 4,
     otherNights: 2,
   },
   {
@@ -240,7 +240,7 @@ export const SECTS_AND_VIOLETS_ROLES: Role[] = [
     type: 'townsfolk',
     team: 'good',
     ability: 'Each night, you learn how many players\' abilities worked abnormally (due to another character\'s ability) since dawn today.',
-    firstNight: 0,
+    firstNight: 9,
     otherNights: 8,
   },
   {
@@ -377,7 +377,7 @@ export const SECTS_AND_VIOLETS_ROLES: Role[] = [
     type: 'minion',
     team: 'evil',
     ability: 'Each night, choose a player: if they are nominated tomorrow, they die. All other witch curses end.',
-    firstNight: 0,
+    firstNight: 6,
     otherNights: 1,
   },
   {
@@ -454,7 +454,7 @@ export const BAD_MOON_RISING_ROLES: Role[] = [
     type: 'townsfolk',
     team: 'good',
     ability: 'Each night, choose an alive player: either you or they are drunk until dusk. You can\'t die.',
-    firstNight: 0,
+    firstNight: 7,
     otherNights: 1,
   },
   {
@@ -463,7 +463,7 @@ export const BAD_MOON_RISING_ROLES: Role[] = [
     type: 'townsfolk',
     team: 'good',
     ability: 'Each night, choose 2 alive players (not yourself): you learn how many woke tonight due to their ability.',
-    firstNight: 0,
+    firstNight: 8,
     otherNights: 7,
   },
   {
@@ -609,7 +609,7 @@ export const BAD_MOON_RISING_ROLES: Role[] = [
     type: 'minion',
     team: 'evil',
     ability: 'Each night, choose a living player (different to last night): if executed tomorrow, they don\'t die.',
-    firstNight: 0,
+    firstNight: 2,
     otherNights: 5,
   },
   {
