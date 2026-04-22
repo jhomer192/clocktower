@@ -159,6 +159,19 @@ export function useGameStore() {
     }));
   }, []);
 
+  // Bulk role assignment -- used by the "Randomize Roles" setup action to drop
+  // a shuffled composition onto the player list in one state update.
+  const assignRolesBulk = useCallback((assignments: Record<string, string>) => {
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map(p => {
+        const roleId = assignments[p.id];
+        if (roleId === undefined) return p;
+        return { ...p, role: roleId, coverRole: undefined };
+      }),
+    }));
+  }, []);
+
   // Phase management
   const startGame = useCallback(() => {
     setState(prev => ({
@@ -290,10 +303,14 @@ export function useGameStore() {
     setState(prev => ({ ...prev, customRoles: roles }));
   }, []);
 
-  // End game: keep player names, clear everything else so a new game can start
+  // End game: keep player names, clear everything else so a new game can start.
+  // Preserve scriptId + customRoles so a group can keep playing with the same
+  // ruleset -- "make a roleset of 14 and pick 8, play, pick another 8".
   const endGame = useCallback(() => {
     setState(prev => ({
       ...defaultState(),
+      scriptId: prev.scriptId,
+      customRoles: prev.customRoles,
       players: prev.players.map(p => ({
         id: p.id,
         name: p.name,
@@ -304,7 +321,6 @@ export function useGameStore() {
         drunkPoisoned: false,
         effects: [],
       })),
-      customRoles: prev.customRoles,
       log: prev.log, // keep the log history across games
     }));
     setStateHistory([]);
@@ -328,6 +344,7 @@ export function useGameStore() {
     reorderPlayers,
     updatePlayer,
     assignRole,
+    assignRolesBulk,
     setCoverRole,
     startGame,
     startNight,

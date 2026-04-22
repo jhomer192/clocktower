@@ -129,6 +129,7 @@ function App() {
               onRemovePlayer={store.removePlayer}
               onReorderPlayers={store.reorderPlayers}
               onAssignRole={store.assignRole}
+              onAssignRolesBulk={store.assignRolesBulk}
               onSetCoverRole={store.setCoverRole}
               onStartGame={store.startGame}
               onAddLogEntry={store.addLogEntry}

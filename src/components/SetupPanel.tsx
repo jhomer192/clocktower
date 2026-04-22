@@ -10,10 +10,21 @@ interface SetupPanelProps {
   onRemovePlayer: (id: string) => void;
   onReorderPlayers: (players: Player[]) => void;
   onAssignRole: (playerId: string, roleId: string) => void;
+  onAssignRolesBulk: (assignments: Record<string, string>) => void;
   onSetCoverRole: (playerId: string, coverRoleId: string) => void;
   onStartGame: () => void;
   onAddLogEntry: (phase: string, text: string) => void;
   onSetScript: (scriptId: string) => void;
+}
+
+/** Fisher-Yates shuffle, non-mutating. */
+function shuffled<T>(arr: readonly T[]): T[] {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 const TYPE_COLORS: Record<RoleType, string> = {
@@ -38,11 +49,13 @@ export function SetupPanel({
   onRemovePlayer,
   onReorderPlayers,
   onAssignRole,
+  onAssignRolesBulk,
   onSetCoverRole,
   onStartGame,
   onAddLogEntry,
   onSetScript,
 }: SetupPanelProps) {
+  const [randomizeWarning, setRandomizeWarning] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -108,6 +121,57 @@ export function SetupPanel({
   const drunksNeedingCover = players.filter(p => p.role === 'drunk' && !p.coverRole);
   // Check if any Evil Twin needs a good twin
   const evilTwinsNeedingTwin = players.filter(p => p.role === 'evil_twin' && !p.coverRole);
+
+  // Pick a random legal composition from the current role pool and drop it
+  // on the seats. Picks demon + minions first so composition modifiers
+  // (Baron, Fang Gu, Vigormortis, Godfather) settle, then picks townsfolk
+  // and outsiders to match the adjusted composition.
+  const handleRandomize = () => {
+    setRandomizeWarning(null);
+    if (players.length < 5) {
+      setRandomizeWarning('Add at least 5 players first.');
+      return;
+    }
+    const baseComp = getComposition(players.length, new Set());
+    if (!baseComp) {
+      setRandomizeWarning('No composition defined for this player count.');
+      return;
+    }
+    const pool = {
+      townsfolk: roles.filter(r => r.type === 'townsfolk'),
+      outsider: roles.filter(r => r.type === 'outsider'),
+      minion: roles.filter(r => r.type === 'minion'),
+      demon: roles.filter(r => r.type === 'demon'),
+    };
+    if (pool.demon.length < 1) {
+      setRandomizeWarning('Ruleset needs at least one demon.');
+      return;
+    }
+    if (pool.minion.length < baseComp.minions) {
+      setRandomizeWarning(`Ruleset needs at least ${baseComp.minions} minion(s).`);
+      return;
+    }
+    const demon = shuffled(pool.demon).slice(0, 1);
+    const minions = shuffled(pool.minion).slice(0, baseComp.minions);
+    const evilIds = new Set([...demon, ...minions].map(r => r.id));
+    const finalComp = getComposition(players.length, evilIds) ?? baseComp;
+    if (pool.townsfolk.length < finalComp.townsfolk) {
+      setRandomizeWarning(`Ruleset needs at least ${finalComp.townsfolk} townsfolk.`);
+      return;
+    }
+    if (pool.outsider.length < finalComp.outsiders) {
+      setRandomizeWarning(`Ruleset needs at least ${finalComp.outsiders} outsider(s).`);
+      return;
+    }
+    const townsfolk = shuffled(pool.townsfolk).slice(0, finalComp.townsfolk);
+    const outsiders = shuffled(pool.outsider).slice(0, finalComp.outsiders);
+    const picked = shuffled([...townsfolk, ...outsiders, ...minions, ...demon]);
+    const assignments: Record<string, string> = {};
+    players.forEach((p, i) => {
+      if (picked[i]) assignments[p.id] = picked[i].id;
+    });
+    onAssignRolesBulk(assignments);
+  };
 
   const handleStart = () => {
     if (!canStart) return;
@@ -301,6 +365,29 @@ export function SetupPanel({
           </select>
         </div>
       ))}
+
+      {/* Randomize Roles -- auto-pick a legal composition from the pool */}
+      {players.length >= 5 && (
+        <div className="bg-surface rounded-xl p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-fg-bright">Randomize Roles</div>
+              <div className="text-xs text-fg-dim mt-0.5">
+                Pick a legal composition from the {roles.length}-role pool and drop it on the {players.length} seats. Click again for a different draw.
+              </div>
+            </div>
+            <button
+              onClick={handleRandomize}
+              className="shrink-0 px-4 py-2 bg-accent text-bg font-semibold rounded-lg active:scale-95 transition-transform"
+            >
+              🎲 Randomize
+            </button>
+          </div>
+          {randomizeWarning && (
+            <div className="text-xs text-yellow mt-2">{randomizeWarning}</div>
+          )}
+        </div>
+      )}
 
       {/* Composition tracker */}
       {composition && players.length >= 5 && (
