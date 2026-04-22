@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import type { Role, RoleType } from '../types/game';
 import { ALL_SCRIPT_ROLES } from '../data/roles';
+import { importOfficialScript, isOfficialScriptFormat } from '../data/officialScript';
 
 interface CustomRolesPanelProps {
   scriptId: string;
@@ -129,7 +130,11 @@ export function CustomRolesPanel({ scriptId, customRoles, onAddCustomRole, onRem
     }
   };
 
-  // Import from JSON file
+  // Import from JSON file. Accepts two formats:
+  //   1. Our native export: { roles: Role[], name, createdAt } (or raw Role[])
+  //   2. Official BOTC script-tool format: an array of role-id strings and
+  //      homebrew role objects, optionally with a _meta header. This is what
+  //      script.bloodontheclocktower.com and every other BOTC tool exports.
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -137,12 +142,30 @@ export function CustomRolesPanel({ scriptId, customRoles, onAddCustomRole, onRem
     reader.onload = () => {
       try {
         const data = JSON.parse(reader.result as string);
+
+        // Official BOTC format -- convert into our Role[] shape.
+        if (isOfficialScriptFormat(data)) {
+          const { roles, name: scriptName, warnings } = importOfficialScript(data);
+          if (roles.length === 0) {
+            flash('No importable roles');
+            return;
+          }
+          onSetCustomRoles(roles);
+          const suffix = warnings.length > 0 ? ` (${warnings.length} warning${warnings.length === 1 ? '' : 's'})` : '';
+          flash(`Loaded ${roles.length} roles${scriptName ? ` from "${scriptName}"` : ''}${suffix}`);
+          if (warnings.length > 0) {
+            // eslint-disable-next-line no-console
+            console.warn('[ruleset import] ' + warnings.join('\n'));
+          }
+          return;
+        }
+
+        // Native format: either a bare array of Roles or { roles: Role[] }.
         const roles = data.roles ?? data;
         if (!Array.isArray(roles) || roles.length === 0) {
           flash('Invalid file');
           return;
         }
-        // Validate roles have required fields
         const valid = roles.every((r: Role) => r.id && r.name && r.type && r.ability);
         if (!valid) {
           flash('Invalid roles');
@@ -217,7 +240,10 @@ export function CustomRolesPanel({ scriptId, customRoles, onAddCustomRole, onRem
         <button onClick={handleCopy} disabled={customRoles.length === 0} className="text-xs px-3 py-1.5 bg-surface2 rounded-lg text-fg-dim hover:text-fg disabled:opacity-30 transition-colors">
           Copy
         </button>
-        <label className="text-xs px-3 py-1.5 bg-surface2 rounded-lg text-fg-dim hover:text-fg cursor-pointer transition-colors">
+        <label
+          className="text-xs px-3 py-1.5 bg-surface2 rounded-lg text-fg-dim hover:text-fg cursor-pointer transition-colors"
+          title="Accepts our exports and scripts from script.bloodontheclocktower.com"
+        >
           Import JSON
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
         </label>
