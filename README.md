@@ -1,73 +1,25 @@
-# React + TypeScript + Vite
+# Clocktower
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Storyteller helper app for [Blood on the Clocktower](https://bloodontheclocktower.com/) — the social deduction game.
 
-Currently, two official plugins are available:
+**[Open the app →](https://jhomer192.github.io/clocktower/)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What it does
 
-## React Compiler
+Clocktower handles the bookkeeping so the Storyteller can focus on running the game:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Setup** — pick a script, assign roles to players (randomizable), validate the composition
+- **Night phase** — step through each role's night action in order, with reminders for what each role does
+- **Day phase** — track nominations, votes, and executions
+- **Players tab** — mark players alive/dead, ghost votes used, and add per-player notes
+- **Log** — full timestamped history of every game event
+- **Undo** — step back up to 20 actions
+- **Custom roles** — define roles beyond the built-in scripts
 
-## Expanding the ESLint configuration
+## Supported scripts
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Trouble Brewing, Sects & Violets, Bad Moon Rising, and custom rulesets.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Tech
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+React + TypeScript + Vite + Zustand. Deployed to GitHub Pages.
