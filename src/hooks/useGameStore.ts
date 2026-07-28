@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { GameState, Player, Nomination, NightAction, Tab, Role } from '../types/game';
+import { track } from '../lib/analytics'
 
 const STORAGE_KEY = 'clocktower-game';
 
@@ -174,6 +175,8 @@ export function useGameStore() {
 
   // Phase management
   const startGame = useCallback(() => {
+    // Setup can be idle curiosity; starting the game is a real session.
+    track('game-started')
     setState(prev => ({
       ...prev,
       setupComplete: true,
