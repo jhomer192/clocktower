@@ -284,6 +284,17 @@ function App() {
             onRemoveLastLog={store.removeLastLog}
           />
         )}
+
+        <footer className="px-4 pt-8 pb-4 text-center text-xs text-fg-dim">
+          Built by{' '}
+          <a href="https://jackhomer.com" className="underline hover:text-fg">
+            Jack Homer
+          </a>
+          {' · '}
+          <a href="https://jackhomer.com/projects/clocktower/" className="underline hover:text-fg">
+            Project write-up
+          </a>
+        </footer>
       </main>
 
       {/* Tab bar */}

@@ -2,7 +2,7 @@
 
 A Storyteller helper app for [Blood on the Clocktower](https://bloodontheclocktower.com/) — the social deduction game.
 
-**[Open the app →](https://jhomer192.github.io/clocktower/)**
+**[Open the app →](https://jackhomer.com/clocktower/)**
 
 ## What it does
 
