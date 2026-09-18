@@ -51,3 +51,5 @@ npm run preview   # serve dist/
 React 19, TypeScript, Vite, Tailwind. No backend and no API: the whole app is static files plus browser storage. `.github/workflows/deploy.yml` builds and publishes to GitHub Pages on every push to `main`.
 
 Longer write-up: [jackhomer.com/projects/clocktower](https://jackhomer.com/projects/clocktower/).
+
+A project by [Jack Homer](https://jackhomer.com/).
