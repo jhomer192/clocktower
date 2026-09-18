@@ -25,9 +25,24 @@
     <!-- Analytics: same property as jackhomer.com, so a visit here is attributable
          to the post or page that sent it. Cookieless; the website ID is public. -->
     <script defer src="https://cloud.umami.is/script.js" data-website-id="9a521c26-dce4-4cf0-b5d9-5266913dc11c"></script>
+      <style>
+      #root { height: auto; min-height: 100%; }
+      .app-guide { box-sizing: border-box; max-width: 52rem; margin: 0 auto; padding: 2rem 1.25rem calc(5rem + env(safe-area-inset-bottom, 0px)); font: 1rem/1.65 system-ui, sans-serif; color: inherit; }
+      .app-guide h2 { font-size: 1.35rem; line-height: 1.3; margin: 0 0 1rem; }
+      .app-guide p { margin: .8rem 0; }
+      .app-guide a { color: inherit; text-decoration: underline; text-underline-offset: .2em; }
+    </style>
+    <noscript><style>#root { display: none; }</style></noscript>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+      <section class="app-guide" aria-labelledby="app-guide-title">
+      <h2 id="app-guide-title">Blood on the Clocktower Storyteller tool</h2>
+      <p>Set up a script, add players in seating order, and assign roles. Clocktower ST helps track the night order, nominations, votes, and player statuses while you run a game.</p>
+      <p>Game state is saved in this browser. This unofficial aid supports the Storyteller; it does not replace the game rules or your judgment.</p>
+      <p>Built by <a href="https://jackhomer.com/">Jack Homer</a> · <a href="https://jackhomer.com/projects/clocktower/">How this project works</a></p>
+      <noscript><p>Enable JavaScript to use the interactive tool.</p></noscript>
+    </section>
   </body>
 </html>
